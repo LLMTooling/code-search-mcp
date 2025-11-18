@@ -75,7 +75,7 @@ export class FileSearchService {
     };
 
     // Execute search
-    let matchedFiles = await fg(patterns, globOptions);
+    const matchedFiles = await fg(patterns, globOptions);
 
     // Get file stats for all matched files
     const files: FileSearchResult[] = [];
