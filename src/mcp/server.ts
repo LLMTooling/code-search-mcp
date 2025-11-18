@@ -20,6 +20,8 @@ import { SymbolSearchService } from '../symbol-search/symbol-search-service.js';
 import { TextSearchService } from '../symbol-search/text-search-service.js';
 import { isCTagsAvailable } from '../symbol-search/ctags-integration.js';
 import { FileSearchService } from '../file-search/index.js';
+import { DependencyAnalyzer } from '../dependency-analysis/index.js';
+import type { DependencyAnalysisOptions } from '../types/dependency-analysis.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -33,6 +35,7 @@ export class CodeSearchMCPServer {
   private symbolSearchService: SymbolSearchService;
   private textSearchService: TextSearchService;
   private fileSearchService: FileSearchService;
+  private dependencyAnalyzer: DependencyAnalyzer;
 
   constructor() {
     this.server = new Server(
@@ -52,6 +55,7 @@ export class CodeSearchMCPServer {
     this.symbolSearchService = new SymbolSearchService(this.symbolIndexer);
     this.textSearchService = new TextSearchService();
     this.fileSearchService = new FileSearchService();
+    this.dependencyAnalyzer = new DependencyAnalyzer();
 
     // Initialize cache system
     this.symbolIndexer.initialize().catch((error) => {
@@ -273,6 +277,36 @@ export class CodeSearchMCPServer {
             },
           },
         },
+        {
+          name: 'analyze_dependencies',
+          description: 'Analyze project dependencies from manifest files (package.json, Cargo.toml, pom.xml, etc.)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'ID of the workspace to analyze',
+              },
+              include_transitive: {
+                type: 'boolean',
+                description: 'Include transitive dependencies (requires package manager, default: false)',
+              },
+              check_outdated: {
+                type: 'boolean',
+                description: 'Check for outdated versions (requires network, default: false)',
+              },
+              security_analysis: {
+                type: 'boolean',
+                description: 'Perform security analysis (default: false)',
+              },
+              max_depth: {
+                type: 'number',
+                description: 'Maximum depth for transitive dependencies (default: 5)',
+              },
+            },
+            required: ['workspace_id'],
+          },
+        },
       ];
 
       return { tools };
@@ -303,6 +337,8 @@ export class CodeSearchMCPServer {
             return await this.handleCacheStats(toolArgs);
           case 'clear_cache':
             return await this.handleClearCache(toolArgs);
+          case 'analyze_dependencies':
+            return await this.handleAnalyzeDependencies(toolArgs);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -643,6 +679,37 @@ export class CodeSearchMCPServer {
         ],
       };
     }
+  }
+
+  private async handleAnalyzeDependencies(args: Record<string, unknown>) {
+    const workspaceId = args.workspace_id as string;
+
+    const workspace = this.workspaceManager.getWorkspace(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}`);
+    }
+
+    const options: DependencyAnalysisOptions = {
+      includeTransitive: args.include_transitive as boolean | undefined,
+      checkOutdated: args.check_outdated as boolean | undefined,
+      securityAnalysis: args.security_analysis as boolean | undefined,
+      maxDepth: args.max_depth as number | undefined,
+    };
+
+    const result = await this.dependencyAnalyzer.analyzeDependencies(
+      workspaceId,
+      workspace.rootPath,
+      options
+    );
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
   }
 
   private async ensureStackRegistry(): Promise<void> {
