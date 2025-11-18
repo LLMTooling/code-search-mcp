@@ -12,6 +12,7 @@ import { StackDetectionEngine } from '../../src/stack-detection/detection-engine
 import { SymbolIndexer } from '../../src/symbol-search/symbol-indexer.js';
 import { SymbolSearchService } from '../../src/symbol-search/symbol-search-service.js';
 import { TextSearchService } from '../../src/symbol-search/text-search-service.js';
+import { FileSearchService } from '../../src/file-search/file-search-service.js';
 import { isCTagsAvailable } from '../../src/symbol-search/ctags-integration.js';
 import type { StackRegistry } from '../../src/types/index.js';
 
@@ -97,6 +98,7 @@ describe('MCP Server Integration Tests', () => {
   let symbolIndexer: SymbolIndexer;
   let symbolSearchService: SymbolSearchService;
   let textSearchService: TextSearchService;
+  let fileSearchService: FileSearchService;
   let ctagsAvailable: boolean;
 
   const clonedRepos: Map<string, string> = new Map();
@@ -147,6 +149,7 @@ describe('MCP Server Integration Tests', () => {
     symbolIndexer = new SymbolIndexer();
     symbolSearchService = new SymbolSearchService(symbolIndexer);
     textSearchService = new TextSearchService();
+    fileSearchService = new FileSearchService();
   }, 120000); // 2 minute timeout for cloning
 
   afterAll(async () => {
@@ -979,6 +982,232 @@ describe('MCP Server Integration Tests', () => {
       expect(results.length).toBeGreaterThan(0);
       results.forEach(result => {
         expect(result.file).toMatch(/\.kts?$/);
+      });
+    });
+  });
+
+  describe('File Search', () => {
+    it('should find TypeScript configuration files', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        name: 'tsconfig*.json',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/tsconfig.*\.json$/);
+        expect(file.size_bytes).toBeGreaterThan(0);
+        expect(new Date(file.modified)).toBeInstanceOf(Date);
+      });
+    });
+
+    it('should find Python source files by extension', async () => {
+      const repoPath = clonedRepos.get('flask')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Flask-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'py',
+        limit: 20,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      expect(result.files.length).toBeLessThanOrEqual(20);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.py$/);
+      });
+    });
+
+    it('should find Java files with pattern', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*.java',
+        limit: 15,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.java$/);
+      });
+    });
+
+    it('should find test files in Go repository', async () => {
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Go-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*_test.go',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/_test\.go$/);
+      });
+    });
+
+    it('should find Cargo.toml in Rust repository', async () => {
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Rust-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        name: 'Cargo.toml',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/Cargo\.toml$/);
+      });
+    });
+
+    it('should find JavaScript files in Express repository', async () => {
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'JS-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'js',
+        limit: 25,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.js$/);
+      });
+    });
+
+    it('should find C header files', async () => {
+      const repoPath = clonedRepos.get('c')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'C-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'h',
+        limit: 30,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.h$/);
+      });
+    });
+
+    it('should find C++ header files', async () => {
+      const repoPath = clonedRepos.get('cpp')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'CPP-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*.hpp',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.hpp$/);
+      });
+    });
+
+    it('should find PHP files in Laravel framework', async () => {
+      const repoPath = clonedRepos.get('php')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'PHP-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'php',
+        limit: 20,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.php$/);
+      });
+    });
+
+    it('should find Ruby files in Jekyll', async () => {
+      const repoPath = clonedRepos.get('ruby')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Ruby-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'rb',
+        limit: 15,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.rb$/);
+      });
+    });
+
+    it('should find Kotlin source files', async () => {
+      const repoPath = clonedRepos.get('kotlin')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Kotlin-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*.kt',
+        limit: 20,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.kt$/);
+      });
+    });
+
+    it('should find README files across repositories', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-README');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        name: 'README.md',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/README\.md$/);
+      });
+    });
+
+    it('should filter by directory', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-DirFilter');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        directory: 'src',
+        extension: 'ts',
+        limit: 10,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/^src\//);
+        expect(file.relative_path).toMatch(/\.ts$/);
+      });
+    });
+
+    it('should return total_matches and search_time_ms', async () => {
+      const repoPath = clonedRepos.get('flask')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Flask-Metadata');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'py',
+        limit: 5,
+      });
+
+      expect(result.total_matches).toBeGreaterThan(0);
+      expect(result.search_time_ms).toBeGreaterThanOrEqual(0);
+      expect(result.files.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle pattern with wildcards', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Wildcards');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/test/**/*.java',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/test/);
+        expect(file.relative_path).toMatch(/\.java$/);
       });
     });
   });
