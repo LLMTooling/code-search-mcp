@@ -114,7 +114,7 @@ export class CodeSearchMCPServer {
               },
               language: {
                 type: 'string',
-                enum: ['java', 'python', 'javascript', 'typescript', 'csharp'],
+                enum: ['java', 'python', 'javascript', 'typescript', 'csharp', 'go', 'rust', 'c', 'cpp', 'php', 'ruby', 'kotlin'],
                 description: 'Programming language to search',
               },
               name: {

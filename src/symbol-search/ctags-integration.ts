@@ -21,7 +21,7 @@ export async function runCTags(workspaceRoot: string): Promise<CTagsTag[]> {
     // Run ctags with appropriate options
     const command = [
       'ctags',
-      '--languages=Java,Python,JavaScript,TypeScript,C#',
+      '--languages=Java,Python,JavaScript,TypeScript,C#,Go,Rust,C,C++,PHP,Ruby,Kotlin',
       '--fields=+nKlsSz',
       '--extras=+q',
       '--output-format=json',
@@ -131,6 +131,21 @@ export function normalizeCTagsLanguage(ctagsLang: string): SupportedLanguage | n
     case 'c#':
     case 'csharp':
       return 'csharp';
+    case 'go':
+      return 'go';
+    case 'rust':
+      return 'rust';
+    case 'c':
+      return 'c';
+    case 'c++':
+    case 'cpp':
+      return 'cpp';
+    case 'php':
+      return 'php';
+    case 'ruby':
+      return 'ruby';
+    case 'kotlin':
+      return 'kotlin';
     default:
       return null;
   }

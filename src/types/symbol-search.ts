@@ -7,7 +7,19 @@
 // Supported Languages
 // ============================================================================
 
-export type SupportedLanguage = 'java' | 'python' | 'javascript' | 'typescript' | 'csharp';
+export type SupportedLanguage =
+  | 'java'
+  | 'python'
+  | 'javascript'
+  | 'typescript'
+  | 'csharp'
+  | 'go'
+  | 'rust'
+  | 'c'
+  | 'cpp'
+  | 'php'
+  | 'ruby'
+  | 'kotlin';
 
 // ============================================================================
 // Symbol Search Parameters
