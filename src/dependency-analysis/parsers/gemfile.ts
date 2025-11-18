@@ -69,7 +69,7 @@ function parseGemDeclaration(line: string, scope: 'production' | 'development' |
   }
 
   const name = gemMatch[1];
-  const version = gemMatch[2] ?? '*';
+  const version = gemMatch[2] || '*';
 
   // Check if it's in a development or test group in the same line
   if (line.includes('group:') || line.includes('groups:')) {

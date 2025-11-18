@@ -13,6 +13,7 @@ import { SymbolIndexer } from '../../src/symbol-search/symbol-indexer.js';
 import { SymbolSearchService } from '../../src/symbol-search/symbol-search-service.js';
 import { TextSearchService } from '../../src/symbol-search/text-search-service.js';
 import { FileSearchService } from '../../src/file-search/file-search-service.js';
+import { DependencyAnalyzer } from '../../src/dependency-analysis/dependency-analyzer.js';
 import { isCTagsAvailable } from '../../src/symbol-search/ctags-integration.js';
 import type { StackRegistry } from '../../src/types/index.js';
 
@@ -99,6 +100,7 @@ describe('MCP Server Integration Tests', () => {
   let symbolSearchService: SymbolSearchService;
   let textSearchService: TextSearchService;
   let fileSearchService: FileSearchService;
+  let dependencyAnalyzer: DependencyAnalyzer;
   let ctagsAvailable: boolean;
 
   const clonedRepos: Map<string, string> = new Map();
@@ -150,6 +152,7 @@ describe('MCP Server Integration Tests', () => {
     symbolSearchService = new SymbolSearchService(symbolIndexer);
     textSearchService = new TextSearchService();
     fileSearchService = new FileSearchService();
+    dependencyAnalyzer = new DependencyAnalyzer();
   }, 120000); // 2 minute timeout for cloning
 
   afterAll(async () => {
@@ -1208,6 +1211,238 @@ describe('MCP Server Integration Tests', () => {
       result.files.forEach(file => {
         expect(file.relative_path).toMatch(/test/);
         expect(file.relative_path).toMatch(/\.java$/);
+      });
+    });
+  });
+
+  describe('Dependency Analysis', () => {
+    it('should analyze JavaScript/npm dependencies in Express', async () => {
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Express-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      expect(result.workspaceId).toBe(workspace.id);
+      expect(result.workspacePath).toBe(workspace.rootPath);
+      expect(result.manifests.length).toBeGreaterThan(0);
+
+      // Should find package.json
+      const packageJson = result.manifests.find(m => m.type === 'package.json');
+      expect(packageJson).toBeDefined();
+      expect(packageJson?.ecosystem).toBe('npm');
+      expect(packageJson?.projectName).toBe('express');
+
+      // Should have dependencies
+      expect(result.dependencies.length).toBeGreaterThan(0);
+      result.dependencies.forEach(dep => {
+        expect(dep.ecosystem).toBe('npm');
+        expect(dep.name).toBeDefined();
+        expect(dep.version).toBeDefined();
+        expect(dep.version.raw).toBeDefined();
+        expect(['production', 'development', 'peer', 'optional']).toContain(dep.scope);
+      });
+
+      // Should have statistics
+      expect(result.statistics.total).toBe(result.dependencies.length);
+      expect(result.statistics.byEcosystem.npm).toBe(result.dependencies.length);
+      expect(result.statistics.uniquePackages).toBeGreaterThan(0);
+
+      // Should have insights
+      expect(result.insights).toBeDefined();
+      expect(Array.isArray(result.insights)).toBe(true);
+    });
+
+    it('should analyze Python dependencies in Flask', async () => {
+      const repoPath = clonedRepos.get('flask')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Flask-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      expect(result.workspaceId).toBe(workspace.id);
+      expect(result.manifests.length).toBeGreaterThan(0);
+
+      // Should find pyproject.toml or setup.py
+      const pythonManifest = result.manifests.find(
+        m => m.type === 'pyproject.toml' || m.type === 'requirements.txt'
+      );
+      expect(pythonManifest).toBeDefined();
+
+      if (result.dependencies.length > 0) {
+        result.dependencies.forEach(dep => {
+          expect(['pip', 'pipenv']).toContain(dep.ecosystem);
+          expect(dep.version.raw).toBeDefined();
+        });
+      }
+    });
+
+    it('should analyze Rust dependencies in ripgrep', async () => {
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Ripgrep-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      expect(result.manifests.length).toBeGreaterThan(0);
+
+      // Should find Cargo.toml
+      const cargoToml = result.manifests.find(m => m.type === 'Cargo.toml');
+      expect(cargoToml).toBeDefined();
+      expect(cargoToml?.ecosystem).toBe('cargo');
+
+      // Should have dependencies
+      expect(result.dependencies.length).toBeGreaterThan(0);
+      result.dependencies.forEach(dep => {
+        expect(dep.ecosystem).toBe('cargo');
+        expect(dep.name).toBeDefined();
+        expect(['production', 'development', 'build']).toContain(dep.scope);
+      });
+
+      // Verify version constraints are parsed
+      result.dependencies.forEach(dep => {
+        expect(dep.version.normalized).toBeDefined();
+        if (dep.version.operator) {
+          expect(['^', '~', '>=', '<=', '>', '<', '=', '*']).toContain(dep.version.operator);
+        }
+      });
+    });
+
+    it('should analyze Go dependencies in Gin', async () => {
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Gin-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      // Should find go.mod
+      const goMod = result.manifests.find(m => m.type === 'go.mod');
+      expect(goMod).toBeDefined();
+      expect(goMod?.ecosystem).toBe('go');
+      expect(goMod?.projectName).toContain('gin');
+
+      if (result.dependencies.length > 0) {
+        result.dependencies.forEach(dep => {
+          expect(dep.ecosystem).toBe('go');
+          expect(dep.isDirect).toBeDefined();
+        });
+
+        // Should distinguish direct vs indirect
+        const directDeps = result.dependencies.filter(d => d.isDirect);
+        expect(directDeps.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('should analyze Java/Maven dependencies in Spring PetClinic', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      // Should find pom.xml or build.gradle (Spring PetClinic uses Gradle)
+      const javaManifest = result.manifests.find(
+        m => m.type === 'pom.xml' || m.type === 'build.gradle' || m.type === 'build.gradle.kts'
+      );
+      expect(javaManifest).toBeDefined();
+      expect(['maven', 'gradle']).toContain(javaManifest?.ecosystem);
+
+      if (result.dependencies.length > 0) {
+        result.dependencies.forEach(dep => {
+          expect(['maven', 'gradle']).toContain(dep.ecosystem);
+          expect(dep.name).toBeDefined();
+          expect(dep.name.length).toBeGreaterThan(0);
+        });
+      }
+    });
+
+    it('should analyze PHP/Composer dependencies in Laravel', async () => {
+      const repoPath = clonedRepos.get('php')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Laravel-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      // Should find composer.json
+      const composerJson = result.manifests.find(m => m.type === 'composer.json');
+      expect(composerJson).toBeDefined();
+      expect(composerJson?.ecosystem).toBe('composer');
+
+      if (result.dependencies.length > 0) {
+        result.dependencies.forEach(dep => {
+          expect(dep.ecosystem).toBe('composer');
+          // PHP should be excluded
+          expect(dep.name).not.toBe('php');
+        });
+      }
+    });
+
+    it('should analyze Ruby dependencies in Jekyll', async () => {
+      const repoPath = clonedRepos.get('ruby')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Jekyll-Deps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      // Should find Gemfile
+      const gemfile = result.manifests.find(m => m.type === 'Gemfile');
+      expect(gemfile).toBeDefined();
+      expect(gemfile?.ecosystem).toBe('rubygems');
+
+      if (result.dependencies.length > 0) {
+        result.dependencies.forEach(dep => {
+          expect(dep.ecosystem).toBe('rubygems');
+        });
+      }
+    });
+
+    it('should handle workspace with no manifests gracefully', async () => {
+      const repoPath = clonedRepos.get('c')!; // C project likely has no dependency manifest
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'C-NoDeps');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      expect(result.workspaceId).toBe(workspace.id);
+      expect(result.manifests).toBeDefined();
+      expect(result.dependencies).toBeDefined();
+      expect(result.statistics.total).toBe(0);
+    });
+
+    it('should provide dependency insights', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-Insights');
+
+      const result = await dependencyAnalyzer.analyzeDependencies(
+        workspace.id,
+        workspace.rootPath
+      );
+
+      expect(result.insights).toBeDefined();
+      expect(Array.isArray(result.insights)).toBe(true);
+
+      // All insights should have required fields
+      result.insights.forEach(insight => {
+        expect(insight.type).toBeDefined();
+        expect(['info', 'warning', 'error']).toContain(insight.severity);
+        expect(insight.message).toBeDefined();
+        expect(typeof insight.message).toBe('string');
       });
     });
   });

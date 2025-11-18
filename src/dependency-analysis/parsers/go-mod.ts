@@ -81,7 +81,7 @@ function parseGoRequire(line: string): Dependency | null {
   const name = match[1];
   const version = match[2];
   const comment = match[3];
-  const isIndirect = comment?.includes('indirect') ?? false;
+  const isIndirect = comment ? comment.includes('indirect') : false;
 
   return {
     name,

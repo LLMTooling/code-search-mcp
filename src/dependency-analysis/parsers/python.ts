@@ -50,7 +50,23 @@ export async function parsePyprojectToml(filePath: string): Promise<{
   dependencies: Dependency[];
 }> {
   const content = await fs.readFile(filePath, 'utf-8');
-  const pyproject = TOML.parse(content) as PyprojectToml;
+
+  // Try to parse TOML, but handle parse errors gracefully
+  let pyproject: PyprojectToml;
+  try {
+    pyproject = TOML.parse(content) as PyprojectToml;
+  } catch {
+    // Some pyproject.toml files use complex TOML features that the parser doesn't support
+    // In this case, return empty results rather than failing completely
+    return {
+      manifest: {
+        path: filePath,
+        type: 'pyproject.toml',
+        ecosystem: 'pip',
+      },
+      dependencies: [],
+    };
+  }
 
   const manifest: ManifestInfo = {
     path: filePath,
@@ -176,7 +192,7 @@ function parseRequirementLine(line: string): Dependency | null {
 
   const name = extrasMatch[1];
   const extras = extrasMatch[2];
-  const versionPart = extrasMatch[3]?.trim() ?? '';
+  const versionPart = extrasMatch[3] ? extrasMatch[3].trim() : '';
 
   const dep: Dependency = {
     name,

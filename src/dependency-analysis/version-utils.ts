@@ -91,32 +91,48 @@ export function parseNpmConstraint(constraint: string): VersionConstraint {
     };
   }
 
-  // Caret range (^1.2.3, ^1.2, ^1)
-  const caretMatch = /^\^(\d+(?:\.\d+)?(?:\.\d+)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
+  // Caret range (^1.2.3 or ^1.2)
+  const caretMatch = /^\^(\d+(?:\.\d+(?:\.\d+)?)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
   if (caretMatch) {
     const version = caretMatch[1];
-    return {
-      raw: constraint,
-      normalized: `^${version}`,
-      operator: '^',
-      minVersion: version,
-    };
+    // Normalize to 3 parts for semantic version parsing
+    const normalizedVersion = version.includes('.')
+      ? (version.split('.').length === 2 ? `${version}.0` : version)
+      : `${version}.0.0`;
+    const parsed = parseSemanticVersion(normalizedVersion);
+    if (parsed) {
+      return {
+        raw: constraint,
+        normalized: `^${version}`,
+        operator: '^',
+        minVersion: version,
+        maxVersion: `${String(parsed.major + 1)}.0.0`,
+      };
+    }
   }
 
-  // Tilde range (~1.2.3, ~1.2)
-  const tildeMatch = /^~(\d+(?:\.\d+)?(?:\.\d+)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
+  // Tilde range (~1.2.3 or ~1.2)
+  const tildeMatch = /^~(\d+(?:\.\d+(?:\.\d+)?)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
   if (tildeMatch) {
     const version = tildeMatch[1];
-    return {
-      raw: constraint,
-      normalized: `~${version}`,
-      operator: '~',
-      minVersion: version,
-    };
+    // Normalize to 3 parts for semantic version parsing
+    const normalizedVersion = version.includes('.')
+      ? (version.split('.').length === 2 ? `${version}.0` : version)
+      : `${version}.0.0`;
+    const parsed = parseSemanticVersion(normalizedVersion);
+    if (parsed) {
+      return {
+        raw: constraint,
+        normalized: `~${version}`,
+        operator: '~',
+        minVersion: version,
+        maxVersion: `${String(parsed.major)}.${String(parsed.minor + 1)}.0`,
+      };
+    }
   }
 
-  // Exact version (1.2.3, 1.2, 1)
-  const exactMatch = /^(\d+(?:\.\d+)?(?:\.\d+)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
+  // Exact version (1.2.3 or 1.2)
+  const exactMatch = /^(\d+(?:\.\d+(?:\.\d+)?)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
   if (exactMatch) {
     const version = exactMatch[1];
     return {
@@ -129,7 +145,7 @@ export function parseNpmConstraint(constraint: string): VersionConstraint {
   }
 
   // Range operators (>=, <=, >, <)
-  const rangeMatch = /^(>=?|<=?|=)(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
+  const rangeMatch = /^(>=?|<=?|=)(\d+(?:\.\d+(?:\.\d+)?)?(?:-[a-zA-Z0-9.-]+)?)$/.exec(trimmed);
   if (rangeMatch) {
     const operator = rangeMatch[1];
     const version = rangeMatch[2];
