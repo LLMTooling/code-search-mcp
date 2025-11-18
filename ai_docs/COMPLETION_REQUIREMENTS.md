@@ -1,0 +1,11 @@
+- You must use TypeScript
+- You must use the official TypeScript MCP SDK
+- You must set up the LATEST version of ESLint
+- Linting MUST pass without any errors
+- You MUST run type checking to ensure production readiness
+- You MUST create integration tests for every area of the codebase, that use REAL data
+    - For these tests, have it clone REAL "popular" github repos
+    - Test dynamic language search
+    - Test ALL other features
+- You MUST create integration tests which actually use the REAL tools from the MCP server , to guarentee production readiness
+- Every single test MUST pass

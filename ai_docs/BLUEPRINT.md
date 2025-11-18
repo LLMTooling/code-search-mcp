@@ -16,5 +16,7 @@ High-level goals:
 - Identify specific tech "stacks" by the presence of various configuration files (read STACK_DETECTION_SYSTEM.md)
 - Language aware search (read LANGUAGE_AWARE_SEARCH.md)
 
+Before you commit, you must do EVERYTHING defined in COMPLETION_REQUIREMENTS.md
+
 
 
