@@ -34,6 +34,30 @@ const TEST_REPOSITORIES = {
     shallow: true,
     depth: 1,
   },
+  java: {
+    url: 'https://github.com/spring-projects/spring-petclinic.git',
+    branch: 'main',
+    shallow: true,
+    depth: 1,
+  },
+  go: {
+    url: 'https://github.com/gin-gonic/gin.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
+  rust: {
+    url: 'https://github.com/BurntSushi/ripgrep.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
+  javascript: {
+    url: 'https://github.com/expressjs/express.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
 };
 
 describe('MCP Server Integration Tests', () => {
@@ -401,5 +425,274 @@ describe('MCP Server Integration Tests', () => {
       });
       expect(textResult.length).toBeGreaterThan(0);
     }, 90000); // 90 second timeout
+  });
+
+  describe('Java Language Support', () => {
+    it('should detect Java stack in Spring PetClinic repo', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Stack');
+
+      const result = await detectionEngine.detectStacks(
+        workspace.id,
+        workspace.rootPath,
+        { scanMode: 'thorough' }
+      );
+
+      expect(result.detectedStacks.length).toBeGreaterThan(0);
+
+      // Should detect Java (Maven)
+      const javaStack = result.detectedStacks.find(s => s.id === 'java-maven');
+      expect(javaStack).toBeDefined();
+      expect(javaStack?.confidence).toBeGreaterThan(0.8);
+    });
+
+    it('should search for Java classes', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping Java symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'java',
+        name: 'Owner',
+        match: 'substring',
+        kinds: ['class'],
+        limit: 10,
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('java');
+        expect(symbol.kind).toBe('class');
+      });
+    }, 60000);
+
+    it('should search for Java methods', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping Java symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Methods');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'java',
+        name: 'get',
+        match: 'prefix',
+        kinds: ['method'],
+        limit: 20,
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('java');
+        expect(symbol.kind).toBe('method');
+        expect(symbol.name.toLowerCase()).toMatch(/^get/);
+      });
+    }, 60000);
+
+    it('should search for text in Java files', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Text');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'public class',
+        language: 'java',
+        literal: true,
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.java$/);
+        expect(result.content).toContain('public class');
+      });
+    });
+  });
+
+  describe('Go Language Support', () => {
+    it('should detect Go stack in Gin repo', async () => {
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Go-Stack');
+
+      const result = await detectionEngine.detectStacks(
+        workspace.id,
+        workspace.rootPath,
+        { scanMode: 'thorough' }
+      );
+
+      expect(result.detectedStacks.length).toBeGreaterThan(0);
+
+      // Should detect Go
+      const goStack = result.detectedStacks.find(s => s.id === 'go');
+      expect(goStack).toBeDefined();
+      expect(goStack?.confidence).toBeGreaterThan(0.8);
+    });
+
+    it('should search for text in Go files', async () => {
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Go-Text');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'func \\w+',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.go$/);
+      });
+    });
+
+    it('should search for Go package imports', async () => {
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Go-Imports');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'import',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.go$/);
+        expect(result.content.toLowerCase()).toContain('import');
+      });
+    });
+  });
+
+  describe('Rust Language Support', () => {
+    it('should detect Rust stack in ripgrep repo', async () => {
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Rust-Stack');
+
+      const result = await detectionEngine.detectStacks(
+        workspace.id,
+        workspace.rootPath,
+        { scanMode: 'thorough' }
+      );
+
+      expect(result.detectedStacks.length).toBeGreaterThan(0);
+
+      // Should detect Rust
+      const rustStack = result.detectedStacks.find(s => s.id === 'rust');
+      expect(rustStack).toBeDefined();
+      expect(rustStack?.confidence).toBeGreaterThan(0.8);
+    });
+
+    it('should search for text in Rust files', async () => {
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Rust-Text');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'fn \\w+',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.rs$/);
+      });
+    });
+
+    it('should search for Rust structs and impl blocks', async () => {
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Rust-Structs');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'struct|impl',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.rs$/);
+      });
+    });
+  });
+
+  describe('JavaScript Language Support', () => {
+    it('should detect JavaScript/Node.js stack in Express repo', async () => {
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'JavaScript-Stack');
+
+      const result = await detectionEngine.detectStacks(
+        workspace.id,
+        workspace.rootPath,
+        { scanMode: 'thorough' }
+      );
+
+      expect(result.detectedStacks.length).toBeGreaterThan(0);
+
+      // Should detect Node.js or JavaScript
+      const jsStack = result.detectedStacks.find(s =>
+        s.id === 'nodejs' || s.id === 'javascript' || s.id === 'express'
+      );
+      expect(jsStack).toBeDefined();
+    });
+
+    it('should search for JavaScript functions', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping JavaScript symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'JavaScript-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'javascript',
+        name: 'app',
+        match: 'substring',
+        kinds: ['function', 'variable'],
+        limit: 10,
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('javascript');
+      });
+    }, 60000);
+
+    it('should search for text in JavaScript files', async () => {
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'JavaScript-Text');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'function',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.js$/);
+        expect(result.content.toLowerCase()).toContain('function');
+      });
+    });
+
+    it('should search for JavaScript exports', async () => {
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'JavaScript-Exports');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'exports|module\\.exports',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.js$/);
+      });
+    });
   });
 });
