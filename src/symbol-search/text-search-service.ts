@@ -41,6 +41,16 @@ export class TextSearchService {
     workspaceRoot: string,
     params: TextSearchParams
   ): Promise<TextSearchResult[]> {
+    // Validate inputs
+    if (!params.pattern || params.pattern.trim() === '') {
+      throw new Error('Search pattern cannot be empty');
+    }
+
+    // Handle invalid limits
+    if (params.limit !== undefined && params.limit <= 0) {
+      return [];
+    }
+
     const args: string[] = ['rg'];
 
     // Output format: JSON lines
@@ -91,17 +101,20 @@ export class TextSearchService {
       args.push('-m', String(params.limit));
     }
 
-    // The pattern
-    args.push('--', `'${params.pattern}'`);
+    // The pattern - escape single quotes in pattern
+    const escapedPattern = params.pattern.replace(/'/g, "'\\''");
+    args.push('--', `'${escapedPattern}'`);
 
-    // Working directory
-    args.push(workspaceRoot);
+    // Working directory - properly quote path with spaces and special chars
+    const escapedPath = workspaceRoot.replace(/'/g, "'\\''");
+    args.push(`'${escapedPath}'`);
 
     const command = args.join(' ');
 
     try {
       const { stdout } = await execAsync(command, {
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+        shell: '/bin/bash',
       });
 
       return this.parseRipgrepJsonOutput(stdout);

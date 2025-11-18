@@ -15,6 +15,11 @@ export class WorkspaceManager implements IWorkspaceManager {
   }
 
   async addWorkspace(rootPath: string, name?: string): Promise<Workspace> {
+    // Validate input
+    if (!rootPath || rootPath.trim() === '') {
+      throw new Error('Workspace path cannot be empty');
+    }
+
     // Normalize and validate the path
     const normalizedPath = path.resolve(rootPath);
 
