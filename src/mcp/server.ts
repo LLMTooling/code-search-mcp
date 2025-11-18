@@ -53,6 +53,11 @@ export class CodeSearchMCPServer {
     this.textSearchService = new TextSearchService();
     this.fileSearchService = new FileSearchService();
 
+    // Initialize cache system
+    this.symbolIndexer.initialize().catch((error) => {
+      console.error('Failed to initialize cache system:', error);
+    });
+
     this.setupHandlers();
   }
 
@@ -234,8 +239,38 @@ export class CodeSearchMCPServer {
                 type: 'string',
                 description: 'ID of the workspace to reindex',
               },
+              force_rebuild: {
+                type: 'boolean',
+                description: 'Force rebuild from scratch, ignoring cache (default: false)',
+              },
             },
             required: ['workspace_id'],
+          },
+        },
+        {
+          name: 'cache_stats',
+          description: 'Get cache statistics for workspaces',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'ID of the workspace (optional - if not provided, returns stats for all workspaces)',
+              },
+            },
+          },
+        },
+        {
+          name: 'clear_cache',
+          description: 'Clear cached indices',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'ID of the workspace to clear cache for (optional - if not provided, clears all caches)',
+              },
+            },
           },
         },
       ];
@@ -264,6 +299,10 @@ export class CodeSearchMCPServer {
             return await this.handleSearchFiles(toolArgs);
           case 'refresh_index':
             return await this.handleRefreshIndex(toolArgs);
+          case 'cache_stats':
+            return await this.handleCacheStats(toolArgs);
+          case 'clear_cache':
+            return await this.handleClearCache(toolArgs);
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -441,6 +480,7 @@ export class CodeSearchMCPServer {
 
   private async handleRefreshIndex(args: Record<string, unknown>) {
     const workspaceId = args.workspace_id as string;
+    const forceRebuild = (args.force_rebuild as boolean) ?? false;
 
     const workspace = this.workspaceManager.getWorkspace(workspaceId);
     if (!workspace) {
@@ -452,7 +492,7 @@ export class CodeSearchMCPServer {
       throw new Error('universal-ctags is not installed. Please install it to use symbol search.');
     }
 
-    await this.symbolSearchService.refreshIndex(workspaceId, workspace.rootPath);
+    await this.symbolSearchService.refreshIndex(workspaceId, workspace.rootPath, forceRebuild);
 
     const stats = this.symbolSearchService.getIndexStats(workspaceId);
 
@@ -465,7 +505,7 @@ export class CodeSearchMCPServer {
               workspace_id: workspaceId,
               total_symbols: stats.totalSymbols,
               last_indexed: stats.lastIndexed,
-              message: 'Index refreshed successfully',
+              message: forceRebuild ? 'Index rebuilt from scratch' : 'Index refreshed successfully',
             },
             null,
             2
@@ -473,6 +513,136 @@ export class CodeSearchMCPServer {
         },
       ],
     };
+  }
+
+  private async handleCacheStats(args: Record<string, unknown>) {
+    const workspaceId = args.workspace_id as string | undefined;
+    const cacheManager = this.symbolIndexer.getCacheManager();
+
+    if (workspaceId) {
+      // Get stats for specific workspace
+      const workspace = this.workspaceManager.getWorkspace(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      const stats = await cacheManager.getCacheStats(workspaceId, workspace.rootPath);
+      if (!stats) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: JSON.stringify(
+                {
+                  workspace_id: workspaceId,
+                  message: 'No cache found for this workspace',
+                },
+                null,
+                2
+              ),
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                workspace_id: stats.workspaceId,
+                workspace_path: stats.workspacePath,
+                total_symbols: stats.totalSymbols,
+                last_indexed: stats.lastIndexed,
+                cache_size_bytes: stats.cacheSize,
+                cache_age_ms: stats.cacheAge,
+                file_count: stats.fileCount,
+                is_cached: stats.isCached,
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } else {
+      // Get stats for all workspaces
+      const allStats = await cacheManager.getAllCacheStats();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                total_workspaces: allStats.length,
+                workspaces: allStats.map(stats => ({
+                  workspace_id: stats.workspaceId,
+                  workspace_path: stats.workspacePath,
+                  total_symbols: stats.totalSymbols,
+                  last_indexed: stats.lastIndexed,
+                  cache_size_bytes: stats.cacheSize,
+                  cache_age_ms: stats.cacheAge,
+                  file_count: stats.fileCount,
+                })),
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
+  }
+
+  private async handleClearCache(args: Record<string, unknown>) {
+    const workspaceId = args.workspace_id as string | undefined;
+    const cacheManager = this.symbolIndexer.getCacheManager();
+
+    if (workspaceId) {
+      // Clear cache for specific workspace
+      const workspace = this.workspaceManager.getWorkspace(workspaceId);
+      if (!workspace) {
+        throw new Error(`Workspace not found: ${workspaceId}`);
+      }
+
+      await cacheManager.clearCache(workspaceId);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                workspace_id: workspaceId,
+                message: 'Cache cleared successfully',
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } else {
+      // Clear all caches
+      await cacheManager.clearAllCaches();
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: JSON.stringify(
+              {
+                message: 'All caches cleared successfully',
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    }
   }
 
   private async ensureStackRegistry(): Promise<void> {
