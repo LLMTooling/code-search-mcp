@@ -1,0 +1,1311 @@
+{
+  "version": "2025.11-01",
+  "description": "Initial stack definition registry for a universal code-search MCP server.",
+  "stacks": {
+    "nodejs": {
+      "id": "nodejs",
+      "displayName": "Node.js",
+      "category": "runtime",
+      "description": "Node.js runtime and npm/yarn/pnpm-based JavaScript/TypeScript projects.",
+      "tags": ["backend", "javascript", "typescript", "node", "npm", "monorepo"],
+      "searchRoots": ["."],
+      "dependsOn": ["javascript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "package.json",
+            "weight": 10,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "package-lock.json",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "yarn.lock",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "pnpm-lock.yaml",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "npm-shrinkwrap.json",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileContains",
+            "path": "package.json",
+            "regex": "dependencies",
+            "weight": 1,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileContains",
+            "path": "package.json",
+            "regex": "devDependencies",
+            "weight": 1,
+            "rootRelative": true
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "javascript": {
+      "id": "javascript",
+      "displayName": "JavaScript",
+      "category": "language",
+      "description": "Projects primarily written in JavaScript.",
+      "tags": ["frontend", "backend", "web"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.js",
+            "weight": 4
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "jsconfig.json",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.jsx",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "public/**/*.js",
+            "weight": 1
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 4
+      }
+    },
+
+    "typescript": {
+      "id": "typescript",
+      "displayName": "TypeScript",
+      "category": "language",
+      "description": "Projects primarily written in TypeScript.",
+      "tags": ["frontend", "backend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["javascript", "nodejs"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "tsconfig.json",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.ts",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.tsx",
+            "weight": 2
+          },
+          {
+            "kind": "fileExists",
+            "path": "tsconfig.base.json",
+            "weight": 1,
+            "rootRelative": true
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "python": {
+      "id": "python",
+      "displayName": "Python",
+      "category": "language",
+      "description": "Python projects using pyproject.toml or legacy setup.py/setup.cfg/requirements.txt.",
+      "tags": ["backend", "scripting", "data", "ml"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "pyproject.toml",
+            "weight": 9,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "setup.py",
+            "weight": 7,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "setup.cfg",
+            "weight": 6,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "requirements.txt",
+            "weight": 5,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.py",
+            "weight": 2
+          },
+          {
+            "kind": "tomlField",
+            "path": "pyproject.toml",
+            "tomlPath": "project.name",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "tomlField",
+            "path": "pyproject.toml",
+            "tomlPath": "build-system.requires",
+            "weight": 1,
+            "rootRelative": true
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 7
+      }
+    },
+
+    "rust": {
+      "id": "rust",
+      "displayName": "Rust (Cargo)",
+      "category": "language",
+      "description": "Rust packages or workspaces managed by Cargo.",
+      "tags": ["systems", "cli", "backend"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "Cargo.toml",
+            "weight": 10,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "Cargo.lock",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "dirExists",
+            "path": "src",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.rs",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "go": {
+      "id": "go",
+      "displayName": "Go (modules)",
+      "category": "language",
+      "description": "Go modules using go.mod.",
+      "tags": ["backend", "cli", "systems"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "go.mod",
+            "weight": 10,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "go.sum",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.go",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "java-maven": {
+      "id": "java-maven",
+      "displayName": "Java (Maven)",
+      "category": "language",
+      "description": "Java projects built with Apache Maven.",
+      "tags": ["backend", "jvm"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "pom.xml",
+            "weight": 10,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "dirExists",
+            "path": "src/main/java",
+            "weight": 3
+          },
+          {
+            "kind": "dirExists",
+            "path": "src/test/java",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "java-gradle": {
+      "id": "java-gradle",
+      "displayName": "Java (Gradle)",
+      "category": "language",
+      "description": "Java or JVM projects built with Gradle.",
+      "tags": ["backend", "jvm"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "build.gradle",
+            "weight": 8,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "build.gradle.kts",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "settings.gradle",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "settings.gradle.kts",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "dirExists",
+            "path": "src/main/java",
+            "weight": 3
+          },
+          {
+            "kind": "dirExists",
+            "path": "src/test/java",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "kotlin-gradle": {
+      "id": "kotlin-gradle",
+      "displayName": "Kotlin (Gradle)",
+      "category": "language",
+      "description": "Kotlin projects using Gradle as the build system.",
+      "tags": ["backend", "jvm", "android"],
+      "searchRoots": ["."],
+      "dependsOn": ["java-gradle"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.kt",
+            "weight": 5
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "build.gradle.kts",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "settings.gradle.kts",
+            "weight": 2,
+            "rootRelative": true
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 5
+      }
+    },
+
+    "csharp-dotnet": {
+      "id": "csharp-dotnet",
+      "displayName": "C# (.NET)",
+      "category": "language",
+      "description": "C# projects built with .NET SDK (csproj/sln).",
+      "tags": ["backend", "desktop", "web", "dotnet"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.csproj",
+            "weight": 9
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.sln",
+            "weight": 3
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.cs",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "cc-cmake": {
+      "id": "cc-cmake",
+      "displayName": "C/C++ (CMake)",
+      "category": "language",
+      "description": "C or C++ projects using CMake as a build system.",
+      "tags": ["systems", "native", "embedded"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "CMakeLists.txt",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.c",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.cpp",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.h",
+            "weight": 1
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.hpp",
+            "weight": 1
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "cc-make": {
+      "id": "cc-make",
+      "displayName": "C/C++ (Make)",
+      "category": "language",
+      "description": "C or C++ projects using Makefiles.",
+      "tags": ["systems", "native", "embedded"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "Makefile",
+            "weight": 7,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.c",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.cpp",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 7
+      }
+    },
+
+    "php-composer": {
+      "id": "php-composer",
+      "displayName": "PHP (Composer)",
+      "category": "language",
+      "description": "PHP projects managed with Composer (composer.json).",
+      "tags": ["backend", "web"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "composer.json",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "composer.lock",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.php",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "ruby-bundler": {
+      "id": "ruby-bundler",
+      "displayName": "Ruby (Bundler)",
+      "category": "language",
+      "description": "Ruby projects using Bundler with a Gemfile.",
+      "tags": ["backend", "web"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "Gemfile",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "Gemfile.lock",
+            "weight": 3,
+            "rootRelative": true
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.rb",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "swift-spm": {
+      "id": "swift-spm",
+      "displayName": "Swift (SwiftPM)",
+      "category": "language",
+      "description": "Swift packages that use Swift Package Manager (Package.swift).",
+      "tags": ["ios", "macos", "cli"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "Package.swift",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.swift",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "elixir-mix": {
+      "id": "elixir-mix",
+      "displayName": "Elixir (Mix)",
+      "category": "language",
+      "description": "Elixir projects using Mix (mix.exs).",
+      "tags": ["backend"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "mix.exs",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "lib/**/*.ex",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "haskell": {
+      "id": "haskell",
+      "displayName": "Haskell",
+      "category": "language",
+      "description": "Haskell projects using Cabal or Stack.",
+      "tags": ["functional"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "filePatternExists",
+            "glob": "*.cabal",
+            "weight": 8
+          },
+          {
+            "kind": "fileExists",
+            "path": "stack.yaml",
+            "weight": 7,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.hs",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "scala-sbt": {
+      "id": "scala-sbt",
+      "displayName": "Scala (sbt)",
+      "category": "language",
+      "description": "Scala projects using sbt.",
+      "tags": ["jvm", "backend"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "build.sbt",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "dirExists",
+            "path": "project",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/main/scala/**/*.scala",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "clojure-lein": {
+      "id": "clojure-lein",
+      "displayName": "Clojure (Leiningen)",
+      "category": "language",
+      "description": "Clojure projects using Leiningen.",
+      "tags": ["jvm", "functional"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "project.clj",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.clj",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "clojure-tools-deps": {
+      "id": "clojure-tools-deps",
+      "displayName": "Clojure (tools.deps)",
+      "category": "language",
+      "description": "Clojure projects using tools.deps and deps.edn.",
+      "tags": ["jvm", "functional"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "deps.edn",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.clj",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "r-lang": {
+      "id": "r-lang",
+      "displayName": "R",
+      "category": "language",
+      "description": "R packages or projects.",
+      "tags": ["data", "statistics"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "DESCRIPTION",
+            "weight": 7,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.R",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.r",
+            "weight": 1
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 7
+      }
+    },
+
+    "lua": {
+      "id": "lua",
+      "displayName": "Lua",
+      "category": "language",
+      "description": "Lua projects, optionally using LuaRocks.",
+      "tags": ["scripting", "embedded"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.lua",
+            "weight": 5
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "*.rockspec",
+            "weight": 3
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 5
+      }
+    },
+
+    "dart": {
+      "id": "dart",
+      "displayName": "Dart",
+      "category": "language",
+      "description": "Dart or Flutter projects using pubspec.yaml.",
+      "tags": ["mobile", "web", "cli"],
+      "searchRoots": ["."],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "pubspec.yaml",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*.dart",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "react": {
+      "id": "react",
+      "displayName": "React",
+      "category": "framework",
+      "description": "React applications (web) built on top of Node.js.",
+      "tags": ["frontend", "web", "spa"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs", "javascript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/react",
+            "weight": 8,
+            "rootRelative": true
+          },
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/devDependencies/react",
+            "weight": 7,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.jsx",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.tsx",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "nextjs": {
+      "id": "nextjs",
+      "displayName": "Next.js",
+      "category": "framework",
+      "description": "Next.js React applications.",
+      "tags": ["frontend", "web", "ssr"],
+      "searchRoots": ["."],
+      "dependsOn": ["react", "nodejs"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/next",
+            "weight": 9,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "next.config.js",
+            "weight": 7,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "next.config.mjs",
+            "weight": 7,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "dirExists",
+            "path": "pages",
+            "weight": 2
+          },
+          {
+            "kind": "dirExists",
+            "path": "app",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "vue": {
+      "id": "vue",
+      "displayName": "Vue.js",
+      "category": "framework",
+      "description": "Vue.js SPA or multipage applications.",
+      "tags": ["frontend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs", "javascript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/vue",
+            "weight": 9,
+            "rootRelative": true
+          },
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/devDependencies/vue",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "vue.config.js",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.vue",
+            "weight": 3
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "angular": {
+      "id": "angular",
+      "displayName": "Angular",
+      "category": "framework",
+      "description": "Angular applications (Angular CLI).",
+      "tags": ["frontend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs", "typescript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "angular.json",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.ts",
+            "weight": 2
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.component.ts",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "svelte": {
+      "id": "svelte",
+      "displayName": "Svelte",
+      "category": "framework",
+      "description": "Svelte and SvelteKit applications.",
+      "tags": ["frontend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs", "javascript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/svelte",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileExists",
+            "path": "svelte.config.js",
+            "weight": 2,
+            "rootRelative": true
+          },
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.svelte",
+            "weight": 3
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "astro": {
+      "id": "astro",
+      "displayName": "Astro",
+      "category": "framework",
+      "description": "Astro content-focused web projects.",
+      "tags": ["frontend", "web", "ssg"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs", "javascript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "filePatternExists",
+            "glob": "astro.config.*",
+            "weight": 8
+          },
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/astro",
+            "weight": 9,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/pages/**/*.astro",
+            "weight": 3
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "express": {
+      "id": "express",
+      "displayName": "Express.js",
+      "category": "framework",
+      "description": "Express.js Node backend services.",
+      "tags": ["backend", "web", "api"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/express",
+            "weight": 9,
+            "rootRelative": true
+          },
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/devDependencies/express",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*express*.js",
+            "weight": 1
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "nestjs": {
+      "id": "nestjs",
+      "displayName": "NestJS",
+      "category": "framework",
+      "description": "NestJS Node backend applications.",
+      "tags": ["backend", "web", "api"],
+      "searchRoots": ["."],
+      "dependsOn": ["nodejs", "typescript"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "jsonField",
+            "path": "package.json",
+            "jsonPointer": "/dependencies/@nestjs/core",
+            "weight": 9,
+            "rootRelative": true
+          },
+          {
+            "kind": "fileExists",
+            "path": "nest-cli.json",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "src/**/*.module.ts",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 9
+      }
+    },
+
+    "django": {
+      "id": "django",
+      "displayName": "Django",
+      "category": "framework",
+      "description": "Django web applications.",
+      "tags": ["backend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["python"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "manage.py",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/settings.py",
+            "weight": 2
+          },
+          {
+            "kind": "fileContains",
+            "path": "requirements.txt",
+            "regex": "django",
+            "weight": 2,
+            "rootRelative": true
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "flask": {
+      "id": "flask",
+      "displayName": "Flask",
+      "category": "framework",
+      "description": "Flask microservices or apps.",
+      "tags": ["backend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["python"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileContains",
+            "path": "requirements.txt",
+            "regex": "flask",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*flask*.py",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "fastapi": {
+      "id": "fastapi",
+      "displayName": "FastAPI",
+      "category": "framework",
+      "description": "FastAPI async web APIs.",
+      "tags": ["backend", "web", "api"],
+      "searchRoots": ["."],
+      "dependsOn": ["python"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileContains",
+            "path": "requirements.txt",
+            "regex": "fastapi",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "filePatternExists",
+            "glob": "**/*fastapi*.py",
+            "weight": 2
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    },
+
+    "laravel": {
+      "id": "laravel",
+      "displayName": "Laravel",
+      "category": "framework",
+      "description": "Laravel PHP web applications.",
+      "tags": ["backend", "web"],
+      "searchRoots": ["."],
+      "dependsOn": ["php-composer"],
+      "indicators": {
+        "requiredAny": [
+          {
+            "kind": "fileExists",
+            "path": "artisan",
+            "weight": 8,
+            "rootRelative": true
+          }
+        ],
+        "optional": [
+          {
+            "kind": "fileContains",
+            "path": "composer.json",
+            "regex": "laravel/framework",
+            "weight": 3,
+            "rootRelative": true
+          }
+        ]
+      },
+      "detection": {
+        "minScore": 8
+      }
+    }
+  }
+}
