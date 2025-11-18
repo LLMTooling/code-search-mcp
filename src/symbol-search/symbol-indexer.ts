@@ -9,14 +9,42 @@ import type {
 } from '../types/index.js';
 import { runCTags, normalizeCTagsLanguage } from './ctags-integration.js';
 import { mapCTagsKind } from './language-profiles.js';
+import { CacheManager } from '../cache/index.js';
 
 export class SymbolIndexer {
   private indices = new Map<string, SymbolIndex>();
+  private cacheManager: CacheManager;
+
+  constructor(cacheManager?: CacheManager) {
+    this.cacheManager = cacheManager ?? new CacheManager();
+  }
+
+  /**
+   * Initialize the cache system.
+   */
+  async initialize(): Promise<void> {
+    await this.cacheManager.initialize();
+  }
 
   /**
    * Build or rebuild the symbol index for a workspace.
+   * Attempts to load from cache first for improved performance.
    */
-  async buildIndex(workspaceId: string, workspaceRoot: string): Promise<void> {
+  async buildIndex(workspaceId: string, workspaceRoot: string, forceRebuild = false): Promise<void> {
+    const startTime = Date.now();
+
+    // Try to load from cache if not forcing rebuild
+    if (!forceRebuild) {
+      const cachedIndex = await this.cacheManager.loadCache(workspaceId, workspaceRoot);
+      if (cachedIndex) {
+        this.indices.set(workspaceId, cachedIndex);
+        const loadTime = Date.now() - startTime;
+        console.log(`Index loaded from cache in ${loadTime}ms (${cachedIndex.totalSymbols} symbols)`);
+        return;
+      }
+    }
+
+    // Build index from scratch
     const tags = await runCTags(workspaceRoot);
 
     const index: SymbolIndex = {
@@ -68,6 +96,12 @@ export class SymbolIndexer {
     }
 
     this.indices.set(workspaceId, index);
+
+    const buildTime = Date.now() - startTime;
+    console.log(`Index built from scratch in ${buildTime}ms (${index.totalSymbols} symbols)`);
+
+    // Save to cache
+    await this.cacheManager.saveCache(workspaceId, workspaceRoot, index);
   }
 
   /**
@@ -87,8 +121,9 @@ export class SymbolIndexer {
   /**
    * Remove the index for a workspace.
    */
-  removeIndex(workspaceId: string): void {
+  async removeIndex(workspaceId: string): Promise<void> {
     this.indices.delete(workspaceId);
+    await this.cacheManager.clearCache(workspaceId);
   }
 
   /**
@@ -160,5 +195,12 @@ export class SymbolIndexer {
     }
 
     return results;
+  }
+
+  /**
+   * Get the cache manager instance.
+   */
+  getCacheManager(): CacheManager {
+    return this.cacheManager;
   }
 }

@@ -153,8 +153,8 @@ export class SymbolSearchService {
   /**
    * Refresh the symbol index for a workspace.
    */
-  async refreshIndex(workspaceId: string, workspaceRoot: string): Promise<void> {
-    await this.indexer.buildIndex(workspaceId, workspaceRoot);
+  async refreshIndex(workspaceId: string, workspaceRoot: string, forceRebuild = false): Promise<void> {
+    await this.indexer.buildIndex(workspaceId, workspaceRoot, forceRebuild);
   }
 
   /**
