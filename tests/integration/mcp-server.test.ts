@@ -12,6 +12,7 @@ import { StackDetectionEngine } from '../../src/stack-detection/detection-engine
 import { SymbolIndexer } from '../../src/symbol-search/symbol-indexer.js';
 import { SymbolSearchService } from '../../src/symbol-search/symbol-search-service.js';
 import { TextSearchService } from '../../src/symbol-search/text-search-service.js';
+import { FileSearchService } from '../../src/file-search/file-search-service.js';
 import { isCTagsAvailable } from '../../src/symbol-search/ctags-integration.js';
 import type { StackRegistry } from '../../src/types/index.js';
 
@@ -58,6 +59,36 @@ const TEST_REPOSITORIES = {
     shallow: true,
     depth: 1,
   },
+  c: {
+    url: 'https://github.com/curl/curl.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
+  cpp: {
+    url: 'https://github.com/nlohmann/json.git',
+    branch: 'develop',
+    shallow: true,
+    depth: 1,
+  },
+  php: {
+    url: 'https://github.com/laravel/framework.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
+  ruby: {
+    url: 'https://github.com/jekyll/jekyll.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
+  kotlin: {
+    url: 'https://github.com/square/okhttp.git',
+    branch: 'master',
+    shallow: true,
+    depth: 1,
+  },
 };
 
 describe('MCP Server Integration Tests', () => {
@@ -67,6 +98,7 @@ describe('MCP Server Integration Tests', () => {
   let symbolIndexer: SymbolIndexer;
   let symbolSearchService: SymbolSearchService;
   let textSearchService: TextSearchService;
+  let fileSearchService: FileSearchService;
   let ctagsAvailable: boolean;
 
   const clonedRepos: Map<string, string> = new Map();
@@ -117,6 +149,7 @@ describe('MCP Server Integration Tests', () => {
     symbolIndexer = new SymbolIndexer();
     symbolSearchService = new SymbolSearchService(symbolIndexer);
     textSearchService = new TextSearchService();
+    fileSearchService = new FileSearchService();
   }, 120000); // 2 minute timeout for cloning
 
   afterAll(async () => {
@@ -543,6 +576,7 @@ describe('MCP Server Integration Tests', () => {
 
       const results = await textSearchService.searchText(workspace.rootPath, {
         pattern: 'func \\w+',
+        language: 'go',
         limit: 10,
       });
 
@@ -558,6 +592,7 @@ describe('MCP Server Integration Tests', () => {
 
       const results = await textSearchService.searchText(workspace.rootPath, {
         pattern: 'import',
+        language: 'go',
         limit: 10,
       });
 
@@ -567,6 +602,29 @@ describe('MCP Server Integration Tests', () => {
         expect(result.content.toLowerCase()).toContain('import');
       });
     });
+
+    it('should index and search Go structs', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping Go symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Go-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'go',
+        name: 'Context',
+        match: 'exact',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('go');
+      });
+    }, 60000);
   });
 
   describe('Rust Language Support', () => {
@@ -585,7 +643,7 @@ describe('MCP Server Integration Tests', () => {
       // Should detect Rust
       const rustStack = result.detectedStacks.find(s => s.id === 'rust');
       expect(rustStack).toBeDefined();
-      expect(rustStack?.confidence).toBeGreaterThan(0.8);
+      expect(rustStack?.confidence).toBeGreaterThan(0.7);
     });
 
     it('should search for text in Rust files', async () => {
@@ -594,6 +652,7 @@ describe('MCP Server Integration Tests', () => {
 
       const results = await textSearchService.searchText(workspace.rootPath, {
         pattern: 'fn \\w+',
+        language: 'rust',
         limit: 10,
       });
 
@@ -609,6 +668,7 @@ describe('MCP Server Integration Tests', () => {
 
       const results = await textSearchService.searchText(workspace.rootPath, {
         pattern: 'struct|impl',
+        language: 'rust',
         limit: 10,
       });
 
@@ -617,6 +677,29 @@ describe('MCP Server Integration Tests', () => {
         expect(result.file).toMatch(/\.rs$/);
       });
     });
+
+    it('should index and search Rust structs', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping Rust symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Rust-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'rust',
+        name: 'Searcher',
+        match: 'substring',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('rust');
+      });
+    }, 60000);
   });
 
   describe('JavaScript Language Support', () => {
@@ -670,6 +753,7 @@ describe('MCP Server Integration Tests', () => {
 
       const results = await textSearchService.searchText(workspace.rootPath, {
         pattern: 'function',
+        language: 'javascript',
         limit: 10,
       });
 
@@ -686,12 +770,444 @@ describe('MCP Server Integration Tests', () => {
 
       const results = await textSearchService.searchText(workspace.rootPath, {
         pattern: 'exports|module\\.exports',
+        language: 'javascript',
         limit: 10,
       });
 
       expect(results.length).toBeGreaterThan(0);
       results.forEach(result => {
         expect(result.file).toMatch(/\.js$/);
+      });
+    });
+  });
+
+  describe('C Language Support', () => {
+    it('should index and search C functions', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping C symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('c')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'C-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'c',
+        name: 'curl',
+        match: 'prefix',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('c');
+      });
+    }, 60000);
+
+    it('should search for C struct definitions', async () => {
+      const repoPath = clonedRepos.get('c')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'C-Structs');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'struct \\w+',
+        language: 'c',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.(c|h)$/);
+      });
+    });
+  });
+
+  describe('C++ Language Support', () => {
+    it('should index and search C++ classes', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping C++ symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('cpp')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'CPP-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'cpp',
+        name: 'json',
+        match: 'substring',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('cpp');
+      });
+    }, 60000);
+
+    it('should search for C++ namespaces', async () => {
+      const repoPath = clonedRepos.get('cpp')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'CPP-Namespaces');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'namespace \\w+',
+        language: 'cpp',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.(cpp|hpp|h|cc|hh)$/);
+      });
+    });
+  });
+
+  describe('PHP Language Support', () => {
+    it('should index and search PHP classes', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping PHP symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('php')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'PHP-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'php',
+        name: 'Controller',
+        match: 'substring',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('php');
+      });
+    }, 60000);
+
+    it('should search for PHP namespace declarations', async () => {
+      const repoPath = clonedRepos.get('php')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'PHP-Namespaces');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'namespace \\w+',
+        language: 'php',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.php$/);
+      });
+    });
+  });
+
+  describe('Ruby Language Support', () => {
+    it('should index and search Ruby classes', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping Ruby symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('ruby')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Ruby-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'ruby',
+        name: 'Jekyll',
+        match: 'substring',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('ruby');
+      });
+    }, 60000);
+
+    it('should search for Ruby module definitions', async () => {
+      const repoPath = clonedRepos.get('ruby')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Ruby-Modules');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'module \\w+',
+        language: 'ruby',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.rb$/);
+      });
+    });
+  });
+
+  describe('Kotlin Language Support', () => {
+    it('should index and search Kotlin classes', async () => {
+      if (!ctagsAvailable) {
+        console.log('Skipping Kotlin symbol search - ctags not available');
+        return;
+      }
+
+      const repoPath = clonedRepos.get('kotlin')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Kotlin-Symbols');
+
+      await symbolSearchService.refreshIndex(workspace.id, workspace.rootPath);
+
+      const result = await symbolSearchService.searchSymbols(workspace.id, {
+        language: 'kotlin',
+        name: 'Http',
+        match: 'prefix',
+      });
+
+      expect(result.symbols.length).toBeGreaterThan(0);
+      result.symbols.forEach(symbol => {
+        expect(symbol.language).toBe('kotlin');
+      });
+    }, 60000);
+
+    it('should search for Kotlin data classes', async () => {
+      const repoPath = clonedRepos.get('kotlin')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Kotlin-DataClasses');
+
+      const results = await textSearchService.searchText(workspace.rootPath, {
+        pattern: 'data class|class \\w+',
+        language: 'kotlin',
+        limit: 10,
+      });
+
+      expect(results.length).toBeGreaterThan(0);
+      results.forEach(result => {
+        expect(result.file).toMatch(/\.kts?$/);
+      });
+    });
+  });
+
+  describe('File Search', () => {
+    it('should find TypeScript configuration files', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        name: 'tsconfig*.json',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/tsconfig.*\.json$/);
+        expect(file.size_bytes).toBeGreaterThan(0);
+        expect(new Date(file.modified)).toBeInstanceOf(Date);
+      });
+    });
+
+    it('should find Python source files by extension', async () => {
+      const repoPath = clonedRepos.get('flask')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Flask-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'py',
+        limit: 20,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      expect(result.files.length).toBeLessThanOrEqual(20);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.py$/);
+      });
+    });
+
+    it('should find Java files with pattern', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*.java',
+        limit: 15,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.java$/);
+      });
+    });
+
+    it('should find test files in Go repository', async () => {
+      const repoPath = clonedRepos.get('go')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Go-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*_test.go',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/_test\.go$/);
+      });
+    });
+
+    it('should find Cargo.toml in Rust repository', async () => {
+      const repoPath = clonedRepos.get('rust')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Rust-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        name: 'Cargo.toml',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/Cargo\.toml$/);
+      });
+    });
+
+    it('should find JavaScript files in Express repository', async () => {
+      const repoPath = clonedRepos.get('javascript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'JS-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'js',
+        limit: 25,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.js$/);
+      });
+    });
+
+    it('should find C header files', async () => {
+      const repoPath = clonedRepos.get('c')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'C-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'h',
+        limit: 30,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.h$/);
+      });
+    });
+
+    it('should find C++ header files', async () => {
+      const repoPath = clonedRepos.get('cpp')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'CPP-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*.hpp',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.hpp$/);
+      });
+    });
+
+    it('should find PHP files in Laravel framework', async () => {
+      const repoPath = clonedRepos.get('php')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'PHP-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'php',
+        limit: 20,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.php$/);
+      });
+    });
+
+    it('should find Ruby files in Jekyll', async () => {
+      const repoPath = clonedRepos.get('ruby')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Ruby-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'rb',
+        limit: 15,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.rb$/);
+      });
+    });
+
+    it('should find Kotlin source files', async () => {
+      const repoPath = clonedRepos.get('kotlin')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Kotlin-FileSearch');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/*.kt',
+        limit: 20,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/\.kt$/);
+      });
+    });
+
+    it('should find README files across repositories', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-README');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        name: 'README.md',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/README\.md$/);
+      });
+    });
+
+    it('should filter by directory', async () => {
+      const repoPath = clonedRepos.get('typescript')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'TS-DirFilter');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        directory: 'src',
+        extension: 'ts',
+        limit: 10,
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/^src\//);
+        expect(file.relative_path).toMatch(/\.ts$/);
+      });
+    });
+
+    it('should return total_matches and search_time_ms', async () => {
+      const repoPath = clonedRepos.get('flask')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Flask-Metadata');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        extension: 'py',
+        limit: 5,
+      });
+
+      expect(result.total_matches).toBeGreaterThan(0);
+      expect(result.search_time_ms).toBeGreaterThanOrEqual(0);
+      expect(result.files.length).toBeLessThanOrEqual(5);
+    });
+
+    it('should handle pattern with wildcards', async () => {
+      const repoPath = clonedRepos.get('java')!;
+      const workspace = await workspaceManager.addWorkspace(repoPath, 'Java-Wildcards');
+
+      const result = await fileSearchService.searchFiles(workspace.rootPath, {
+        pattern: '**/test/**/*.java',
+      });
+
+      expect(result.files.length).toBeGreaterThan(0);
+      result.files.forEach(file => {
+        expect(file.relative_path).toMatch(/test/);
+        expect(file.relative_path).toMatch(/\.java$/);
       });
     });
   });

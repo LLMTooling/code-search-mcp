@@ -19,6 +19,7 @@ import { SymbolIndexer } from '../symbol-search/symbol-indexer.js';
 import { SymbolSearchService } from '../symbol-search/symbol-search-service.js';
 import { TextSearchService } from '../symbol-search/text-search-service.js';
 import { isCTagsAvailable } from '../symbol-search/ctags-integration.js';
+import { FileSearchService } from '../file-search/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,6 +32,7 @@ export class CodeSearchMCPServer {
   private symbolIndexer: SymbolIndexer;
   private symbolSearchService: SymbolSearchService;
   private textSearchService: TextSearchService;
+  private fileSearchService: FileSearchService;
 
   constructor() {
     this.server = new Server(
@@ -49,6 +51,7 @@ export class CodeSearchMCPServer {
     this.symbolIndexer = new SymbolIndexer();
     this.symbolSearchService = new SymbolSearchService(this.symbolIndexer);
     this.textSearchService = new TextSearchService();
+    this.fileSearchService = new FileSearchService();
 
     this.setupHandlers();
   }
@@ -114,7 +117,7 @@ export class CodeSearchMCPServer {
               },
               language: {
                 type: 'string',
-                enum: ['java', 'python', 'javascript', 'typescript', 'csharp'],
+                enum: ['java', 'python', 'javascript', 'typescript', 'csharp', 'go', 'rust', 'c', 'cpp', 'php', 'ruby', 'kotlin'],
                 description: 'Programming language to search',
               },
               name: {
@@ -184,6 +187,44 @@ export class CodeSearchMCPServer {
           },
         },
         {
+          name: 'search_files',
+          description: 'Search for files by name, pattern, or extension',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'ID of the workspace to search',
+              },
+              pattern: {
+                type: 'string',
+                description: 'Glob pattern to match files (e.g., "**/*.json", "src/**/*.ts")',
+              },
+              name: {
+                type: 'string',
+                description: 'File name to search for (supports wildcards, e.g., "config.*")',
+              },
+              extension: {
+                type: 'string',
+                description: 'File extension to filter by (e.g., "ts", "json")',
+              },
+              directory: {
+                type: 'string',
+                description: 'Restrict search to this directory (relative to workspace root)',
+              },
+              case_sensitive: {
+                type: 'boolean',
+                description: 'Case-sensitive search (default: false)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum results to return (default: 100)',
+              },
+            },
+            required: ['workspace_id'],
+          },
+        },
+        {
           name: 'refresh_index',
           description: 'Rebuild the symbol index for a workspace',
           inputSchema: {
@@ -219,6 +260,8 @@ export class CodeSearchMCPServer {
             return await this.handleSearchSymbols(toolArgs);
           case 'search_text':
             return await this.handleSearchText(toolArgs);
+          case 'search_files':
+            return await this.handleSearchFiles(toolArgs);
           case 'refresh_index':
             return await this.handleRefreshIndex(toolArgs);
           default:
@@ -364,6 +407,33 @@ export class CodeSearchMCPServer {
         {
           type: 'text',
           text: JSON.stringify({ results }, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async handleSearchFiles(args: Record<string, unknown>) {
+    const workspaceId = args.workspace_id as string;
+
+    const workspace = this.workspaceManager.getWorkspace(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}`);
+    }
+
+    const result = await this.fileSearchService.searchFiles(workspace.rootPath, {
+      pattern: args.pattern as string | undefined,
+      name: args.name as string | undefined,
+      extension: args.extension as string | undefined,
+      directory: args.directory as string | undefined,
+      case_sensitive: args.case_sensitive as boolean | undefined,
+      limit: args.limit as number | undefined,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(result, null, 2),
         },
       ],
     };
