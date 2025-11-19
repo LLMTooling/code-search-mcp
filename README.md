@@ -7,7 +7,6 @@
   <img src="https://img.shields.io/badge/Node.js-18%2B-green?style=for-the-badge&logo=node.js&logoColor=white">
   <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge">
   <img src="https://img.shields.io/badge/Platforms-Win%20%7C%20macOS%20%7C%20Linux-blue?style=for-the-badge">
-  <img src="https://img.shields.io/badge/MCP-Compatible-purple?style=for-the-badge">
 </p>
 
 <div align="center">
@@ -356,136 +355,6 @@ Add to your MCP settings file (e.g., `claude_desktop_config.json`):
 ```
 
 <div align="center">
-  <h2>Usage Examples</h2>
-</div>
-
-<div align="center">
-
-**Adding a Workspace**
-
-</div>
-
-```json
-{
-  "tool": "add_workspace",
-  "arguments": {
-    "path": "/path/to/your/project",
-    "name": "my-project"
-  }
-}
-```
-
-<div align="center">
-
-**Searching for Symbols**
-
-</div>
-
-```json
-{
-  "tool": "search_symbols",
-  "arguments": {
-    "workspace_id": "ws-1",
-    "language": "typescript",
-    "name": "UserService",
-    "match": "exact",
-    "kinds": ["class"]
-  }
-}
-```
-
-<div align="center">
-
-**Searching Text with Regex**
-
-</div>
-
-```json
-{
-  "tool": "search_text",
-  "arguments": {
-    "workspace_id": "ws-1",
-    "pattern": "async function.*Error",
-    "language": "javascript",
-    "limit": 50
-  }
-}
-```
-
-<div align="center">
-
-**Finding Files**
-
-</div>
-
-```json
-{
-  "tool": "search_files",
-  "arguments": {
-    "workspace_id": "ws-1",
-    "pattern": "**/*.test.ts",
-    "directory": "src"
-  }
-}
-```
-
-<div align="center">
-
-**Analyzing Dependencies**
-
-</div>
-
-```json
-{
-  "tool": "analyze_dependencies",
-  "arguments": {
-    "workspace_id": "ws-1",
-    "include_transitive": true,
-    "check_outdated": true
-  }
-}
-```
-
-<div align="center">
-  <h2>Cache Management</h2>
-</div>
-
-The caching system works automatically, but you can manage it manually when needed:
-
-```json
-// View cache statistics
-{
-  "tool": "cache_stats",
-  "arguments": {
-    "workspace_id": "ws-1"
-  }
-}
-
-// Force rebuild from scratch
-{
-  "tool": "refresh_index",
-  "arguments": {
-    "workspace_id": "ws-1",
-    "force_rebuild": true
-  }
-}
-
-// Clear cache
-{
-  "tool": "clear_cache",
-  "arguments": {
-    "workspace_id": "ws-1"
-  }
-}
-```
-
-<div align="center">
-
-Cache files are stored in `~/.code-search-mcp-cache/` and automatically invalidated when files change.
-
-</div>
-
-<div align="center">
   <h2>Development</h2>
 </div>
 
@@ -587,10 +456,22 @@ MIT License - see [LICENSE](LICENSE) for details
 </div>
 
 <div align="center">
-
-Built with:
-- [universal-ctags](https://ctags.io/) for symbol indexing
-- [ripgrep](https://github.com/BurntSushi/ripgrep) for text search
-- [MCP SDK](https://github.com/modelcontextprotocol/sdk) for protocol implementation
-
+<table>
+  <tr>
+    <th>Tool</th>
+    <th>Purpose</th>
+  </tr>
+  <tr>
+    <td><a href="https://ctags.io/">universal-ctags</a></td>
+    <td>Symbol indexing</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/BurntSushi/ripgrep">ripgrep</a></td>
+    <td>Text search</td>
+  </tr>
+  <tr>
+    <td><a href="https://github.com/modelcontextprotocol/sdk">MCP SDK</a></td>
+    <td>Protocol implementation</td>
+  </tr>
+</table>
 </div>
