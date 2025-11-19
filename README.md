@@ -250,6 +250,72 @@ The server exposes the following tools through the Model Context Protocol interf
 </div>
 
 <div align="center">
+  <h2>Tech Stack Detection</h2>
+</div>
+
+<div align="center">
+
+Automatically identify technologies, frameworks, and tools used in your projects with intelligent file-based detection.
+
+</div>
+
+<div align="center">
+<table>
+  <tr>
+    <th>Category</th>
+    <th>Technologies Detected</th>
+    <th>Detection Method</th>
+  </tr>
+  <tr>
+    <td>Languages</td>
+    <td>JavaScript, TypeScript, Python, Java, C#, Go, Rust, C/C++, PHP, Ruby, Kotlin, Swift</td>
+    <td>File extensions & patterns</td>
+  </tr>
+  <tr>
+    <td>Build Tools</td>
+    <td>Webpack, Vite, Rollup, Parcel, Gradle, Maven, Make, CMake, MSBuild</td>
+    <td>Config files</td>
+  </tr>
+  <tr>
+    <td>Package Managers</td>
+    <td>npm, Yarn, pnpm, pip, Poetry, Cargo, Go modules, NuGet, Composer, Bundler</td>
+    <td>Lock files & manifests</td>
+  </tr>
+  <tr>
+    <td>Frameworks</td>
+    <td>React, Vue, Angular, Next.js, Svelte, Django, Flask, FastAPI, Spring Boot, .NET Core</td>
+    <td>Dependencies & configs</td>
+  </tr>
+  <tr>
+    <td>Testing</td>
+    <td>Jest, Mocha, Vitest, Pytest, JUnit, NUnit, Go Test, Cargo Test</td>
+    <td>Config files & dependencies</td>
+  </tr>
+  <tr>
+    <td>Databases</td>
+    <td>PostgreSQL, MySQL, MongoDB, Redis, SQLite, Prisma, TypeORM, Sequelize</td>
+    <td>Config files & dependencies</td>
+  </tr>
+  <tr>
+    <td>DevOps</td>
+    <td>Docker, Kubernetes, GitHub Actions, GitLab CI, CircleCI, Jenkins, Terraform</td>
+    <td>Config files & manifests</td>
+  </tr>
+  <tr>
+    <td>Code Quality</td>
+    <td>ESLint, Prettier, Black, Pylint, Flake8, RuboCop, Clippy, TSLint</td>
+    <td>Config files</td>
+  </tr>
+</table>
+</div>
+
+<div align="center">
+
+**Scan Modes:** Fast (config files only) • Thorough (includes dependency analysis)
+
+</div>
+
+<div align="center">
   <h2>Performance</h2>
 </div>
 
