@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__code-search-mcp__add_workspace",
+      "mcp__code-search-mcp__list_workspaces",
+      "mcp__code-search-mcp__search_files",
+      "mcp__code-search-mcp__search_text",
+      "mcp__code-search-mcp__detect_stacks",
+      "mcp__code-search-mcp__search_symbols",
+      "Bash(npm run build:*)",
+      "WebSearch",
+      "Bash(npm search:*)",
+      "Bash(node -e:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

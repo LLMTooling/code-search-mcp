@@ -8,7 +8,8 @@
     "code-search-mcp": "dist/index.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run copy-assets",
+    "copy-assets": "node -e \"require('fs').cpSync('src/stacks.json', 'dist/stacks.json')\"",
     "dev": "tsc --watch",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -27,7 +28,9 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@LLMTooling/code-search-mcp-universal-ctags": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
+    "@vscode/ripgrep": "^1.17.0",
     "fast-glob": "^3.3.2",
     "toml": "^3.0.0",
     "zod": "^3.24.1"

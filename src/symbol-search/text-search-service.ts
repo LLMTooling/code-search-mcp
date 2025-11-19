@@ -2,12 +2,13 @@
  * Text/usage search service using ripgrep.
  */
 
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
+import { rgPath } from '@vscode/ripgrep';
 import type { SupportedLanguage } from '../types/index.js';
 import { getLanguageGlobs } from './language-profiles.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 export interface TextSearchResult {
   file: string;
@@ -51,7 +52,7 @@ export class TextSearchService {
       return [];
     }
 
-    const args: string[] = ['rg'];
+    const args: string[] = [];
 
     // Output format: JSON lines
     args.push('--json');
@@ -70,14 +71,14 @@ export class TextSearchService {
     if (params.language) {
       const globs = getLanguageGlobs(params.language);
       for (const glob of globs) {
-        args.push('--glob', `'${glob}'`);
+        args.push('--glob', glob);
       }
     }
 
     // Additional include patterns
     if (params.include) {
       for (const glob of params.include) {
-        args.push('--glob', `'${glob}'`);
+        args.push('--glob', glob);
       }
     }
 
@@ -93,7 +94,7 @@ export class TextSearchService {
     ];
     const excludes = [...defaultExcludes, ...(params.exclude ?? [])];
     for (const glob of excludes) {
-      args.push('--glob', `'!${glob}'`);
+      args.push('--glob', `!${glob}`);
     }
 
     // Max results
@@ -101,20 +102,15 @@ export class TextSearchService {
       args.push('-m', String(params.limit));
     }
 
-    // The pattern - escape single quotes in pattern
-    const escapedPattern = params.pattern.replace(/'/g, "'\\''");
-    args.push('--', `'${escapedPattern}'`);
+    // The pattern
+    args.push('--', params.pattern);
 
-    // Working directory - properly quote path with spaces and special chars
-    const escapedPath = workspaceRoot.replace(/'/g, "'\\''");
-    args.push(`'${escapedPath}'`);
-
-    const command = args.join(' ');
+    // Working directory
+    args.push(workspaceRoot);
 
     try {
-      const { stdout } = await execAsync(command, {
+      const { stdout } = await execFileAsync(rgPath, args, {
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer
-        shell: '/bin/bash',
       });
 
       return this.parseRipgrepJsonOutput(stdout);
@@ -187,7 +183,7 @@ export class TextSearchService {
    */
   async isRipgrepAvailable(): Promise<boolean> {
     try {
-      await execAsync('rg --version');
+      await execFileAsync(rgPath, ['--version']);
       return true;
     } catch {
       return false;

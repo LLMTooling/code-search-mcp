@@ -2,13 +2,14 @@
  * Integration with universal-ctags for symbol indexing.
  */
 
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { ctagsPath } from '@LLMTooling/code-search-mcp-universal-ctags';
 import type { CTagsTag, SupportedLanguage } from '../types/index.js';
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Run universal-ctags on a workspace directory.
@@ -19,18 +20,18 @@ export async function runCTags(workspaceRoot: string): Promise<CTagsTag[]> {
 
   try {
     // Run ctags with appropriate options
-    const command = [
-      'ctags',
+    const args = [
       '--languages=Java,Python,JavaScript,TypeScript,C#,Go,Rust,C,C++,PHP,Ruby,Kotlin',
       '--fields=+nKlsSz',
       '--extras=+q',
       '--output-format=json',
-      `-f ${tagsFile}`,
+      `-f`,
+      tagsFile,
       '-R',
       '.',
-    ].join(' ');
+    ];
 
-    await execAsync(command, {
+    await execFileAsync(ctagsPath, args, {
       cwd: workspaceRoot,
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large projects
     });
@@ -107,7 +108,7 @@ function parseCTagsJsonLine(line: string): CTagsTag | null {
  */
 export async function isCTagsAvailable(): Promise<boolean> {
   try {
-    await execAsync('ctags --version');
+    await execFileAsync(ctagsPath, ['--version']);
     return true;
   } catch {
     return false;
