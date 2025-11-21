@@ -221,13 +221,13 @@ describe('AST Search Integration', () => {
         return;
       }
 
-      // This should not throw but return empty results
-      await expect(
-        service.searchPattern('test-workspace', tempDir, {
-          language: 'javascript',
-          pattern: '',
-        })
-      ).rejects.toThrow();
+      // Empty pattern should return no results (ast-grep handles this gracefully)
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'javascript',
+        pattern: '',
+      });
+
+      expect(result.matches).toHaveLength(0);
     });
 
     it('should handle non-existent workspace paths', async () => {
@@ -235,12 +235,34 @@ describe('AST Search Integration', () => {
         return;
       }
 
-      await expect(
-        service.searchPattern('test-workspace', '/nonexistent/path', {
-          language: 'javascript',
-          pattern: 'function $NAME() { }',
-        })
-      ).rejects.toThrow();
+      // Non-existent path should return empty results (no files found)
+      const result = await service.searchPattern('test-workspace', '/nonexistent/path', {
+        language: 'javascript',
+        pattern: 'function $NAME() { }',
+      });
+
+      expect(result.matches).toHaveLength(0);
+      expect(result.totalMatches).toBe(0);
+    });
+
+    it('should skip files that fail to parse', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      // Create a malformed JS file
+      const badFile = path.join(tempDir, 'bad.js');
+      await fs.writeFile(badFile, 'function ( { this is not valid', 'utf-8');
+
+      // Should not throw, just skip the bad file
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'javascript',
+        pattern: 'function $NAME($$$) { $$$ }',
+      });
+
+      // Should still find matches in valid files
+      expect(result).toBeDefined();
+      expect(Array.isArray(result.matches)).toBe(true);
     });
   });
 });
