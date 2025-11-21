@@ -7,6 +7,10 @@ on:
     branches: [main, master]
   workflow_dispatch: # Allows manual trigger
 
+permissions:
+  contents: read
+  packages: read
+
 jobs:
   test:
     name: Run Tests
@@ -29,13 +33,16 @@ jobs:
 
       - name: Configure npm for GitHub Packages
         run: |
-          echo "@LLMTooling:registry=https://npm.pkg.github.com" >> .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          cat > .npmrc << EOF
+          @LLMTooling:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}
+          EOF
 
       - name: Install dependencies
         run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build project
         run: npm run build
@@ -58,6 +65,9 @@ jobs:
   test-ast-specific:
     name: AST Search Tests
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
 
     steps:
       - name: Checkout code
@@ -72,13 +82,16 @@ jobs:
 
       - name: Configure npm for GitHub Packages
         run: |
-          echo "@LLMTooling:registry=https://npm.pkg.github.com" >> .npmrc
-          echo "//npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}" >> .npmrc
+          cat > .npmrc << EOF
+          @LLMTooling:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${{ secrets.GITHUB_TOKEN }}
+          EOF
 
       - name: Install dependencies
         run: npm ci
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build project
         run: npm run build
