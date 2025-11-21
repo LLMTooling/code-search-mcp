@@ -21,6 +21,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TEST_REPOS_DIR = path.join(__dirname, 'repos');
+const TEST_CACHE_DIR = path.join(__dirname, 'integration-cache');
 
 // Test repositories - real, popular GitHub repos
 const TEST_REPOSITORIES = {
@@ -146,7 +147,9 @@ describe('MCP Server Integration Tests', () => {
     stackRegistry = JSON.parse(content) as StackRegistry;
 
     // Initialize services
-    workspaceManager = new WorkspaceManager();
+    await fs.mkdir(TEST_CACHE_DIR, { recursive: true });
+    workspaceManager = new WorkspaceManager(TEST_CACHE_DIR);
+    await workspaceManager.initialize();
     detectionEngine = new StackDetectionEngine(stackRegistry);
     symbolIndexer = new SymbolIndexer();
     symbolSearchService = new SymbolSearchService(symbolIndexer);
@@ -156,6 +159,13 @@ describe('MCP Server Integration Tests', () => {
   }, 120000); // 2 minute timeout for cloning
 
   afterAll(async () => {
+    // Clean up test cache directory
+    try {
+      await fs.rm(TEST_CACHE_DIR, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors
+    }
+
     // Clean up cloned repositories
     console.log('Cleaning up test repositories...');
     try {

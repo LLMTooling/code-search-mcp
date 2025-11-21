@@ -16,6 +16,8 @@ export interface Workspace {
 }
 
 export interface WorkspaceManager {
+  /** Initialize the workspace manager and load persisted workspaces. */
+  initialize(): Promise<void>;
   /** Get a workspace by ID. */
   getWorkspace(id: string): Workspace | undefined;
   /** Add a new workspace. */
@@ -26,4 +28,6 @@ export interface WorkspaceManager {
   listWorkspaces(): Workspace[];
   /** Check if a workspace exists. */
   hasWorkspace(id: string): boolean;
+  /** Update the last accessed time for a workspace. */
+  updateLastAccessed(id: string): void;
 }

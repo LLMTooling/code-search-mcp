@@ -57,6 +57,11 @@ export class CodeSearchMCPServer {
     this.fileSearchService = new FileSearchService();
     this.dependencyAnalyzer = new DependencyAnalyzer();
 
+    // Initialize workspace manager to load persisted workspaces
+    this.workspaceManager.initialize().catch((error) => {
+      console.error('Failed to initialize workspace manager:', error);
+    });
+
     // Initialize cache system
     this.symbolIndexer.initialize().catch((error) => {
       console.error('Failed to initialize cache system:', error);
