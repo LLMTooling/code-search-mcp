@@ -268,4 +268,207 @@ describe('WorkspaceManager', () => {
       });
     });
   });
+
+  describe('ID Generation from Directory Names', () => {
+    it('should generate kebab-case IDs from PascalCase', async () => {
+      const dir = path.join(testDir, 'MyAwesomeProject');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-awesome-project');
+    });
+
+    it('should generate kebab-case IDs from camelCase', async () => {
+      const dir = path.join(testDir, 'myAwesomeProject');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-awesome-project');
+    });
+
+    it('should replace spaces with dashes', async () => {
+      const dir = path.join(testDir, 'my awesome project');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-awesome-project');
+    });
+
+    it('should replace underscores with dashes', async () => {
+      const dir = path.join(testDir, 'my_awesome_project');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-awesome-project');
+    });
+
+    it('should keep existing dashes', async () => {
+      const dir = path.join(testDir, 'my-awesome-project');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-awesome-project');
+    });
+
+    it('should keep numbers in IDs', async () => {
+      const dir = path.join(testDir, 'project123');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('project123');
+    });
+
+    it('should remove special characters', async () => {
+      const dir = path.join(testDir, 'my@project#name!');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('myprojectname');
+    });
+
+    it('should collapse multiple dashes', async () => {
+      const dir = path.join(testDir, 'my---project');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-project');
+    });
+
+    it('should trim leading and trailing dashes', async () => {
+      const dir = path.join(testDir, '-my-project-');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('my-project');
+    });
+
+    it('should use "workspace" as fallback for empty result', async () => {
+      const dir = path.join(testDir, '@@@');
+      await fs.mkdir(dir, { recursive: true });
+
+      const workspace = await workspaceManager.addWorkspace(dir);
+      expect(workspace.id).toBe('workspace');
+    });
+  });
+
+  describe('ID Collision Handling', () => {
+    it('should append -2 for first collision', async () => {
+      const dir1 = path.join(testDir, 'my-project');
+      const dir2 = path.join(testDir, 'MyProject');
+      await fs.mkdir(dir1, { recursive: true });
+      await fs.mkdir(dir2, { recursive: true });
+
+      const ws1 = await workspaceManager.addWorkspace(dir1);
+      const ws2 = await workspaceManager.addWorkspace(dir2);
+
+      expect(ws1.id).toBe('my-project');
+      expect(ws2.id).toBe('my-project-2');
+    });
+
+    it('should handle multiple collisions', async () => {
+      const dirs = [
+        path.join(testDir, 'project'),
+        path.join(testDir, 'Project'),
+        path.join(testDir, 'PROJECT'),
+        path.join(testDir, 'project '),
+      ];
+
+      for (const dir of dirs) {
+        await fs.mkdir(dir, { recursive: true });
+      }
+
+      const ws1 = await workspaceManager.addWorkspace(dirs[0]);
+      const ws2 = await workspaceManager.addWorkspace(dirs[1]);
+      const ws3 = await workspaceManager.addWorkspace(dirs[2]);
+      const ws4 = await workspaceManager.addWorkspace(dirs[3]);
+
+      expect(ws1.id).toBe('project');
+      expect(ws2.id).toBe('project-2');
+      expect(ws3.id).toBe('project-3');
+      expect(ws4.id).toBe('project-4');
+    });
+
+    it('should not consider removed workspaces for collision', async () => {
+      const dir1 = path.join(testDir, 'collision-test');
+      const dir2 = path.join(testDir, 'CollisionTest');
+      await fs.mkdir(dir1, { recursive: true });
+      await fs.mkdir(dir2, { recursive: true });
+
+      const ws1 = await workspaceManager.addWorkspace(dir1);
+      await workspaceManager.removeWorkspace(ws1.id);
+
+      const ws2 = await workspaceManager.addWorkspace(dir2);
+      // After removal, the ID should be reused
+      expect(ws2.id).toBe('collision-test');
+    });
+  });
+
+  describe('updateLastAccessed', () => {
+    it('should update lastAccessed timestamp', async () => {
+      const workspace = await workspaceManager.addWorkspace(testDir, 'Test');
+      const originalTime = workspace.lastAccessed.getTime();
+
+      // Wait a bit to ensure time difference
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      workspaceManager.updateLastAccessed(workspace.id);
+
+      // Get the workspace again to check the update
+      const updated = workspaceManager.getWorkspace(workspace.id);
+      expect(updated).toBeDefined();
+      expect(updated!.lastAccessed.getTime()).toBeGreaterThan(originalTime);
+    });
+
+    it('should not throw when updating non-existent workspace', () => {
+      expect(() => {
+        workspaceManager.updateLastAccessed('non-existent-id');
+      }).not.toThrow();
+    });
+  });
+
+  describe('hasWorkspace', () => {
+    it('should return true for existing workspace', async () => {
+      const workspace = await workspaceManager.addWorkspace(testDir, 'Test');
+      expect(workspaceManager.hasWorkspace(workspace.id)).toBe(true);
+    });
+
+    it('should return false for non-existent workspace', () => {
+      expect(workspaceManager.hasWorkspace('non-existent-id')).toBe(false);
+    });
+
+    it('should return false after workspace removal', async () => {
+      const workspace = await workspaceManager.addWorkspace(testDir, 'Test');
+      await workspaceManager.removeWorkspace(workspace.id);
+      expect(workspaceManager.hasWorkspace(workspace.id)).toBe(false);
+    });
+  });
+
+  describe('Registry File Operations', () => {
+    it('should create registry file when workspace is added', async () => {
+      await workspaceManager.addWorkspace(testDir, 'Test');
+
+      const registryPath = path.join(testCacheDir, 'workspaces.json');
+      const exists = await fs.access(registryPath).then(() => true).catch(() => false);
+      expect(exists).toBe(true);
+    });
+
+    it('should update registry file when workspace is removed', async () => {
+      const dir1 = path.join(testDir, 'workspace-1');
+      const dir2 = path.join(testDir, 'workspace-2');
+      await fs.mkdir(dir1, { recursive: true });
+      await fs.mkdir(dir2, { recursive: true });
+
+      const ws1 = await workspaceManager.addWorkspace(dir1);
+      await workspaceManager.addWorkspace(dir2);
+      await workspaceManager.removeWorkspace(ws1.id);
+
+      // Read registry and verify only one workspace remains
+      const registryPath = path.join(testCacheDir, 'workspaces.json');
+      const content = await fs.readFile(registryPath, 'utf-8');
+      const registry = JSON.parse(content);
+
+      expect(Object.keys(registry.workspaces).length).toBe(1);
+      expect(registry.workspaces['workspace-2']).toBeDefined();
+    });
+  });
 });
