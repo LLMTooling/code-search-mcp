@@ -18,21 +18,13 @@ import type {
 } from '../types/ast-search.js';
 
 // Language mapping from our types to ast-grep Lang enum
+// Only includes languages built into @ast-grep/napi
 const LANGUAGE_MAP: Record<ASTLanguage, Lang> = {
   javascript: Lang.JavaScript,
   typescript: Lang.TypeScript,
   tsx: Lang.Tsx,
-  python: Lang.Python,
-  rust: Lang.Rust,
-  go: Lang.Go,
-  java: Lang.Java,
-  c: Lang.C,
-  cpp: Lang.Cpp,
-  csharp: Lang.CSharp,
-  ruby: Lang.Ruby,
-  php: Lang.Php,
-  kotlin: Lang.Kotlin,
-  swift: Lang.Swift,
+  html: Lang.Html,
+  css: Lang.Css,
 };
 
 // File extension to language mapping
@@ -42,22 +34,12 @@ const EXTENSION_MAP: Record<string, ASTLanguage> = {
   '.cjs': 'javascript',
   '.jsx': 'javascript',
   '.ts': 'typescript',
+  '.mts': 'typescript',
+  '.cts': 'typescript',
   '.tsx': 'tsx',
-  '.py': 'python',
-  '.rs': 'rust',
-  '.go': 'go',
-  '.java': 'java',
-  '.c': 'c',
-  '.h': 'c',
-  '.cpp': 'cpp',
-  '.cc': 'cpp',
-  '.cxx': 'cpp',
-  '.hpp': 'cpp',
-  '.cs': 'csharp',
-  '.rb': 'ruby',
-  '.php': 'php',
-  '.kt': 'kotlin',
-  '.swift': 'swift',
+  '.html': 'html',
+  '.htm': 'html',
+  '.css': 'css',
 };
 
 export class ASTSearchService {

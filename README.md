@@ -15,7 +15,7 @@
 
 <div align="center">
 
-Code Search MCP is a high-performance Model Context Protocol server that enables LLMs to intelligently search and analyze codebases across 14+ programming languages. Built on universal-ctags, ripgrep, and ast-grep, it provides fast symbol search, structural AST search, text search, file search, and dependency analysis with persistent caching for 80%+ faster startup times.
+Code Search MCP is a high-performance Model Context Protocol server that enables LLMs to intelligently search and analyze codebases across 12 programming languages. Built on universal-ctags, ripgrep, and ast-grep, it provides fast symbol search, structural AST search, text search, file search, and dependency analysis with persistent caching for 80%+ faster startup times.
 
 </div>
 
@@ -350,7 +350,9 @@ Search code using Abstract Syntax Tree analysis for structural pattern matching 
 
 <div align="center">
 
-**Supported Languages:** JavaScript, TypeScript, TSX, Python, Rust, Go, Java, C, C++, C#, Ruby, PHP, Kotlin, Swift
+**Supported Languages:** JavaScript, TypeScript, TSX, HTML, CSS
+
+*Note: @ast-grep/napi includes these 5 languages by default. Additional language support can be added via dynamic language packages if needed.*
 
 </div>
 
