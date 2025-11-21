@@ -498,10 +498,7 @@ sudo apt-get install ripgrep
 # Windows (via Chocolatey)
 choco install ripgrep
 
-# Install ast-grep (optional, for AST search)
-npm install -g @ast-grep/cli
-# or via cargo
-cargo install ast-grep
+# ast-grep is bundled with the MCP server - no separate installation needed!
 ```
 
 <div align="center">

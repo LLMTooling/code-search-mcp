@@ -811,10 +811,10 @@ export class CodeSearchMCPServer {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
 
-    // Check if ast-grep is available
+    // Check if ast-grep is available (should always be true since it's bundled)
     const astGrepInfo = await this.astSearchService.isAvailable();
     if (!astGrepInfo.available) {
-      throw new Error(`ast-grep is not available: ${astGrepInfo.error}. Please install it with: npm install -g @ast-grep/cli`);
+      throw new Error(`ast-grep failed to load: ${astGrepInfo.error}`);
     }
 
     const result = await this.astSearchService.searchPattern(workspaceId, workspace.rootPath, {
@@ -842,10 +842,10 @@ export class CodeSearchMCPServer {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
 
-    // Check if ast-grep is available
+    // Check if ast-grep is available (should always be true since it's bundled)
     const astGrepInfo = await this.astSearchService.isAvailable();
     if (!astGrepInfo.available) {
-      throw new Error(`ast-grep is not available: ${astGrepInfo.error}. Please install it with: npm install -g @ast-grep/cli`);
+      throw new Error(`ast-grep failed to load: ${astGrepInfo.error}`);
     }
 
     const rule = args.rule as ASTRule;
