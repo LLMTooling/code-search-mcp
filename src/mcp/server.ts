@@ -22,6 +22,8 @@ import { isCTagsAvailable } from '../symbol-search/ctags-integration.js';
 import { FileSearchService } from '../file-search/index.js';
 import { DependencyAnalyzer } from '../dependency-analysis/index.js';
 import type { DependencyAnalysisOptions } from '../types/dependency-analysis.js';
+import { ASTSearchService } from '../ast-search/index.js';
+import type { ASTRule } from '../types/ast-search.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,6 +38,7 @@ export class CodeSearchMCPServer {
   private textSearchService: TextSearchService;
   private fileSearchService: FileSearchService;
   private dependencyAnalyzer: DependencyAnalyzer;
+  private astSearchService: ASTSearchService;
 
   constructor() {
     this.server = new Server(
@@ -56,6 +59,7 @@ export class CodeSearchMCPServer {
     this.textSearchService = new TextSearchService();
     this.fileSearchService = new FileSearchService();
     this.dependencyAnalyzer = new DependencyAnalyzer();
+    this.astSearchService = new ASTSearchService();
 
     // Initialize workspace manager to load persisted workspaces
     this.workspaceManager.initialize().catch((error) => {
@@ -312,6 +316,82 @@ export class CodeSearchMCPServer {
             required: ['workspace_id'],
           },
         },
+        {
+          name: 'search_ast_pattern',
+          description: 'Search code using AST pattern matching with metavariables ($VAR for capture, $$VAR for single anonymous, $$$VAR for multiple)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'ID of the workspace to search',
+              },
+              language: {
+                type: 'string',
+                enum: ['javascript', 'typescript', 'tsx', 'python', 'rust', 'go', 'java', 'c', 'cpp', 'csharp', 'ruby', 'php', 'kotlin', 'swift'],
+                description: 'Programming language to search',
+              },
+              pattern: {
+                type: 'string',
+                description: 'AST pattern to match (e.g., "function $FUNC($ARG) { $$$ }" or "async function $NAME() { $$$ }" for functions without await)',
+              },
+              paths: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific file paths or glob patterns to search (optional)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum results to return (default: 100)',
+              },
+            },
+            required: ['workspace_id', 'language', 'pattern'],
+          },
+        },
+        {
+          name: 'search_ast_rule',
+          description: 'Search code using complex AST rules with relational (inside, has, precedes, follows) and composite (all, any, not) operators',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              workspace_id: {
+                type: 'string',
+                description: 'ID of the workspace to search',
+              },
+              language: {
+                type: 'string',
+                enum: ['javascript', 'typescript', 'tsx', 'python', 'rust', 'go', 'java', 'c', 'cpp', 'csharp', 'ruby', 'php', 'kotlin', 'swift'],
+                description: 'Programming language to search',
+              },
+              rule: {
+                type: 'object',
+                description: 'AST rule object with pattern, kind, regex, relational rules (inside, has, precedes, follows), or composite rules (all, any, not, matches)',
+              },
+              paths: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific file paths or glob patterns to search (optional)',
+              },
+              limit: {
+                type: 'number',
+                description: 'Maximum results to return (default: 100)',
+              },
+              debug: {
+                type: 'boolean',
+                description: 'Enable debug mode to show AST structure (default: false)',
+              },
+            },
+            required: ['workspace_id', 'language', 'rule'],
+          },
+        },
+        {
+          name: 'check_ast_grep',
+          description: 'Check if ast-grep is available and get version information',
+          inputSchema: {
+            type: 'object',
+            properties: {},
+          },
+        },
       ];
 
       return { tools };
@@ -344,6 +424,12 @@ export class CodeSearchMCPServer {
             return await this.handleClearCache(toolArgs);
           case 'analyze_dependencies':
             return await this.handleAnalyzeDependencies(toolArgs);
+          case 'search_ast_pattern':
+            return await this.handleSearchASTPattern(toolArgs);
+          case 'search_ast_rule':
+            return await this.handleSearchASTRule(toolArgs);
+          case 'check_ast_grep':
+            return await this.handleCheckASTGrep();
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -712,6 +798,90 @@ export class CodeSearchMCPServer {
         {
           type: 'text',
           text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async handleSearchASTPattern(args: Record<string, unknown>) {
+    const workspaceId = args.workspace_id as string;
+
+    const workspace = this.workspaceManager.getWorkspace(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}`);
+    }
+
+    // Check if ast-grep is available
+    const astGrepInfo = await this.astSearchService.isAvailable();
+    if (!astGrepInfo.available) {
+      throw new Error(`ast-grep is not available: ${astGrepInfo.error}. Please install it with: npm install -g @ast-grep/cli`);
+    }
+
+    const result = await this.astSearchService.searchPattern(workspaceId, workspace.rootPath, {
+      language: args.language as never,
+      pattern: args.pattern as string,
+      paths: args.paths as string[] | undefined,
+      limit: args.limit as number | undefined,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async handleSearchASTRule(args: Record<string, unknown>) {
+    const workspaceId = args.workspace_id as string;
+
+    const workspace = this.workspaceManager.getWorkspace(workspaceId);
+    if (!workspace) {
+      throw new Error(`Workspace not found: ${workspaceId}`);
+    }
+
+    // Check if ast-grep is available
+    const astGrepInfo = await this.astSearchService.isAvailable();
+    if (!astGrepInfo.available) {
+      throw new Error(`ast-grep is not available: ${astGrepInfo.error}. Please install it with: npm install -g @ast-grep/cli`);
+    }
+
+    const rule = args.rule as ASTRule;
+
+    // Validate rule
+    const validation = this.astSearchService.validateRule(rule);
+    if (!validation.valid) {
+      throw new Error(`Invalid AST rule: ${validation.errors.join(', ')}`);
+    }
+
+    const result = await this.astSearchService.searchRule(workspaceId, workspace.rootPath, {
+      language: args.language as never,
+      rule,
+      paths: args.paths as string[] | undefined,
+      limit: args.limit as number | undefined,
+      debug: args.debug as boolean | undefined,
+    });
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(result, null, 2),
+        },
+      ],
+    };
+  }
+
+  private async handleCheckASTGrep() {
+    const astGrepInfo = await this.astSearchService.isAvailable();
+
+    return {
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify(astGrepInfo, null, 2),
         },
       ],
     };
