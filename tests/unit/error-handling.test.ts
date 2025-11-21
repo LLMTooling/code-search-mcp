@@ -16,6 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TEST_DIR = path.join(__dirname, 'error-handling-test');
+const TEST_CACHE_DIR = path.join(__dirname, 'error-handling-cache');
 
 describe('Error Handling and Edge Cases', () => {
   let workspaceManager: WorkspaceManager;
@@ -23,16 +24,19 @@ describe('Error Handling and Edge Cases', () => {
   let symbolSearchService: SymbolSearchService;
 
   beforeAll(async () => {
-    workspaceManager = new WorkspaceManager();
+    await fs.mkdir(TEST_DIR, { recursive: true });
+    await fs.mkdir(TEST_CACHE_DIR, { recursive: true });
+
+    workspaceManager = new WorkspaceManager(TEST_CACHE_DIR);
+    await workspaceManager.initialize();
     textSearchService = new TextSearchService();
     const symbolIndexer = new SymbolIndexer();
     symbolSearchService = new SymbolSearchService(symbolIndexer);
-
-    await fs.mkdir(TEST_DIR, { recursive: true });
   });
 
   afterAll(async () => {
     await fs.rm(TEST_DIR, { recursive: true, force: true });
+    await fs.rm(TEST_CACHE_DIR, { recursive: true, force: true });
   });
 
   describe('Invalid Input Handling', () => {

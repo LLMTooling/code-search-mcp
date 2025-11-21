@@ -14,16 +14,23 @@ const __dirname = path.dirname(__filename);
 describe('WorkspaceManager', () => {
   let workspaceManager: WorkspaceManager;
   let testDir: string;
+  let testCacheDir: string;
 
   beforeEach(async () => {
-    workspaceManager = new WorkspaceManager();
     testDir = path.join(__dirname, 'test-workspaces');
+    testCacheDir = path.join(__dirname, 'test-cache');
     await fs.mkdir(testDir, { recursive: true });
+    await fs.mkdir(testCacheDir, { recursive: true });
+
+    // Use a temporary cache directory for tests
+    workspaceManager = new WorkspaceManager(testCacheDir);
+    await workspaceManager.initialize();
   });
 
   afterEach(async () => {
     try {
       await fs.rm(testDir, { recursive: true, force: true });
+      await fs.rm(testCacheDir, { recursive: true, force: true });
     } catch (error) {
       // Ignore cleanup errors
     }
@@ -34,7 +41,8 @@ describe('WorkspaceManager', () => {
       const workspace = await workspaceManager.addWorkspace(testDir, 'Test Workspace');
 
       expect(workspace).toBeDefined();
-      expect(workspace.id).toMatch(/^ws-\d+$/);
+      // ID should be derived from directory name (test-workspaces)
+      expect(workspace.id).toBe('test-workspaces');
       expect(workspace.name).toBe('Test Workspace');
       expect(workspace.rootPath).toBe(testDir);
       expect(workspace.createdAt).toBeInstanceOf(Date);
@@ -139,7 +147,7 @@ describe('WorkspaceManager', () => {
     });
 
     it('should return undefined for non-existent ID', () => {
-      const retrieved = workspaceManager.getWorkspace('ws-999999');
+      const retrieved = workspaceManager.getWorkspace('non-existent-workspace-id');
 
       expect(retrieved).toBeUndefined();
     });
@@ -172,7 +180,7 @@ describe('WorkspaceManager', () => {
     });
 
     it('should return false when removing non-existent workspace', async () => {
-      const removed = await workspaceManager.removeWorkspace('ws-999999');
+      const removed = await workspaceManager.removeWorkspace('non-existent-workspace-id');
 
       expect(removed).toBe(false);
     });

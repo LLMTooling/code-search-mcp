@@ -15,6 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TEST_DIR = path.join(__dirname, 'performance-test');
+const TEST_CACHE_DIR = path.join(__dirname, 'performance-cache');
 
 describe('Performance and Stress Tests', () => {
   let workspaceManager: WorkspaceManager;
@@ -22,7 +23,11 @@ describe('Performance and Stress Tests', () => {
   let detectionEngine: StackDetectionEngine;
 
   beforeAll(async () => {
-    workspaceManager = new WorkspaceManager();
+    await fs.mkdir(TEST_DIR, { recursive: true });
+    await fs.mkdir(TEST_CACHE_DIR, { recursive: true });
+
+    workspaceManager = new WorkspaceManager(TEST_CACHE_DIR);
+    await workspaceManager.initialize();
     textSearchService = new TextSearchService();
 
     // Load stack registry
@@ -30,12 +35,11 @@ describe('Performance and Stress Tests', () => {
     const content = await fs.readFile(stacksPath, 'utf-8');
     const stackRegistry = JSON.parse(content) as StackRegistry;
     detectionEngine = new StackDetectionEngine(stackRegistry);
-
-    await fs.mkdir(TEST_DIR, { recursive: true });
   });
 
   afterAll(async () => {
     await fs.rm(TEST_DIR, { recursive: true, force: true });
+    await fs.rm(TEST_CACHE_DIR, { recursive: true, force: true });
   });
 
   describe('Workspace Manager Performance', () => {
