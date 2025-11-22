@@ -396,6 +396,180 @@ function MyComponent() {
       expect(Array.isArray(result.matches)).toBe(true);
     });
   });
+
+  describe('Text Truncation', () => {
+    describe('maxLines parameter', () => {
+      it('should truncate large class to 3 lines by default', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchPattern(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            pattern: 'export class $CLASS { $$$ }',
+          }
+        );
+
+        expect(result.matches.length).toBeGreaterThan(0);
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(3);
+          expect(match.totalLines).toBeGreaterThan(3);
+          expect(match.text).toContain('export class LargeServiceClass');
+        }
+      });
+
+      it('should respect custom maxLines parameter', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchPattern(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            pattern: 'export class $CLASS { $$$ }',
+            maxLines: 5,
+          }
+        );
+
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(5);
+          expect(match.totalLines).toBeGreaterThan(5);
+        }
+      });
+
+      it('should handle maxLines = 1', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchPattern(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            pattern: 'export class $CLASS { $$$ }',
+            maxLines: 1,
+          }
+        );
+
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(1);
+          expect(match.text).toContain('export class LargeServiceClass');
+        }
+      });
+
+      it('should include totalLines field in response', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchPattern(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            pattern: 'export class $CLASS { $$$ }',
+            maxLines: 2,
+          }
+        );
+
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          expect(match.totalLines).toBeDefined();
+          expect(match.totalLines).toBeGreaterThan(match.text.split('\n').length);
+          expect(match.endLine - match.line + 1).toBe(match.totalLines);
+        }
+      });
+
+      it('should preserve metavariables with truncation', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchPattern(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            pattern: 'export class $CLASS { $$$ }',
+            maxLines: 2,
+          }
+        );
+
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          expect(match.metaVariables).toBeDefined();
+          expect(match.metaVariables?.CLASS).toBeDefined();
+          expect(match.metaVariables?.CLASS.text).toBe('LargeServiceClass');
+        }
+      });
+    });
+
+    describe('searchRule with maxLines', () => {
+      it('should truncate with maxLines parameter', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchRule(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            rule: { pattern: 'export class $CLASS { $$$ }' },
+            maxLines: 4,
+          }
+        );
+
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(4);
+          expect(match.totalLines).toBeGreaterThan(4);
+        }
+      });
+
+      it('should include totalLines in rule search results', async () => {
+        if (!astGrepAvailable) return;
+
+        const workspace = workspaceManager.getWorkspace(workspaceId);
+        const result = await astSearchService.searchRule(
+          workspaceId,
+          workspace!.rootPath,
+          {
+            language: 'typescript',
+            rule: { pattern: 'export class $CLASS { $$$ }' },
+            maxLines: 3,
+          }
+        );
+
+        const match = result.matches.find(m => m.file.includes('large-service.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          expect(match.totalLines).toBeDefined();
+          expect(match.totalLines).toBeGreaterThan(3);
+        }
+      });
+    });
+  });
 });
 
 /**
@@ -515,4 +689,41 @@ class Service {
 
   await fs.writeFile(path.join(dir, 'main.js'), jsContent, 'utf-8');
   await fs.writeFile(path.join(dir, 'types.ts'), tsContent, 'utf-8');
+
+  // Create a large class for truncation testing
+  const largeClassContent = `export class LargeServiceClass {
+  private apiKey: string;
+  private baseUrl: string;
+  private timeout: number;
+  private retries: number;
+
+  constructor(config: Config) {
+    this.apiKey = config.apiKey;
+    this.baseUrl = config.baseUrl;
+    this.timeout = config.timeout || 5000;
+    this.retries = config.retries || 3;
+  }
+
+  async get(endpoint: string): Promise<any> {
+    const url = \`\${this.baseUrl}\${endpoint}\`;
+    const response = await fetch(url);
+    return response.json();
+  }
+
+  async post(endpoint: string, data: any): Promise<any> {
+    const url = \`\${this.baseUrl}\${endpoint}\`;
+    const response = await fetch(url, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    return response.json();
+  }
+
+  async delete(endpoint: string): Promise<void> {
+    const url = \`\${this.baseUrl}\${endpoint}\`;
+    await fetch(url, { method: 'DELETE' });
+  }
+}`;
+  await fs.writeFile(path.join(dir, 'large-service.ts'), largeClassContent, 'utf-8');
 }
+

@@ -265,6 +265,179 @@ describe('AST Search Integration', () => {
       expect(Array.isArray(result.matches)).toBe(true);
     });
   });
+
+  describe('Text Truncation', () => {
+    describe('maxLines parameter', () => {
+      it('should truncate large class to 3 lines by default', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'export class $CLASS { $$$ }',
+        });
+
+        expect(result.matches.length).toBeGreaterThan(0);
+        const match = result.matches.find(m => m.file.includes('large.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(3);
+          expect(match.totalLines).toBeGreaterThan(3);
+          expect(match.text).toContain('export class LargeClass');
+        }
+      });
+
+      it('should respect custom maxLines value', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'export class $CLASS { $$$ }',
+          maxLines: 5,
+        });
+
+        const match = result.matches.find(m => m.file.includes('large.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(5);
+          expect(match.totalLines).toBeGreaterThan(5);
+        }
+      });
+
+      it('should handle maxLines = 1', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'export class $CLASS { $$$ }',
+          maxLines: 1,
+        });
+
+        const match = result.matches.find(m => m.file.includes('large.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(1);
+          expect(match.text).toContain('export class LargeClass');
+        }
+      });
+
+      it('should not truncate if match is shorter than maxLines', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'async function $NAME() { $$$ }',
+          maxLines: 50,
+        });
+
+        if (result.matches.length > 0) {
+          const match = result.matches[0];
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(match.totalLines);
+        }
+      });
+
+      it('should work with searchRule', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchRule('test', tempDir, {
+          language: 'typescript',
+          rule: {
+            pattern: 'export class $CLASS { $$$ }',
+          },
+          maxLines: 4,
+        });
+
+        const match = result.matches.find(m => m.file.includes('large.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(4);
+          expect(match.totalLines).toBeGreaterThan(4);
+        }
+      });
+    });
+
+    describe('totalLines field', () => {
+      it('should accurately report total lines before truncation', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'export class $CLASS { $$$ }',
+          maxLines: 2,
+        });
+
+        const match = result.matches.find(m => m.file.includes('large.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          // The large class is 31 lines total
+          expect(match.totalLines).toBe(31);
+          expect(match.endLine - match.line + 1).toBe(31);
+        }
+      });
+
+      it('should match line range for non-truncated matches', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'async function $NAME() { $$$ }',
+          maxLines: 100,
+        });
+
+        if (result.matches.length > 0) {
+          for (const match of result.matches) {
+            expect(match.totalLines).toBe(match.endLine - match.line + 1);
+          }
+        }
+      });
+    });
+
+    describe('metavariables with truncation', () => {
+      it('should preserve metavariables when truncating', async () => {
+        if (!astGrepAvailable) {
+          return;
+        }
+
+        const result = await service.searchPattern('test', tempDir, {
+          language: 'typescript',
+          pattern: 'export class $CLASS { $$$ }',
+          maxLines: 2,
+        });
+
+        const match = result.matches.find(m => m.file.includes('large.ts'));
+        expect(match).toBeDefined();
+
+        if (match) {
+          expect(match.metaVariables).toBeDefined();
+          expect(match.metaVariables?.CLASS).toBeDefined();
+          expect(match.metaVariables?.CLASS.text).toBe('LargeClass');
+        }
+      });
+    });
+  });
 });
 
 /**
@@ -344,4 +517,38 @@ const getUserStatus = (user: User): Status => {
 
   await fs.writeFile(path.join(dir, 'test.js'), jsContent, 'utf-8');
   await fs.writeFile(path.join(dir, 'test.ts'), tsContent, 'utf-8');
-}
+
+  // Create a large class for testing truncation
+  const largeClassContent = `export class LargeClass {
+  private field1: string;
+  private field2: number;
+  private field3: boolean;
+
+  constructor() {
+    this.field1 = 'test';
+    this.field2 = 42;
+    this.field3 = true;
+  }
+
+  method1(): void {
+    console.log('method1');
+  }
+
+  method2(): void {
+    console.log('method2');
+  }
+
+  method3(): void {
+    console.log('method3');
+  }
+
+  method4(): void {
+    console.log('method4');
+  }
+
+  method5(): void {
+    console.log('method5');
+  }
+}`;
+  await fs.writeFile(path.join(dir, 'large.ts'), largeClassContent, 'utf-8');
+}

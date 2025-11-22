@@ -10,7 +10,10 @@
       "Bash(npm run build:*)",
       "WebSearch",
       "Bash(npm search:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "mcp__code-search-mcp__search_ast_pattern",
+      "mcp__code-search-mcp__search_ast_rule",
+      "Bash(npm test:*)"
     ],
     "deny": [],
     "ask": []

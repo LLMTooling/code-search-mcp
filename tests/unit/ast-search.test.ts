@@ -226,4 +226,154 @@ describe('ASTSearchService', () => {
       expect(result.valid).toBe(true);
     });
   });
+
+  describe('Text truncation', () => {
+    it('should not truncate text shorter than maxLines', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'import { $$$ } from "$MODULE"',
+        maxLines: 10,
+        limit: 1,
+      });
+
+      // Most import statements are single line
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        expect(match.totalLines).toBeLessThanOrEqual(10);
+        expect(match.text.split('\n').length).toBe(match.totalLines);
+      }
+    });
+
+    it('should truncate text longer than maxLines', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'export class $CLASS { $$$ }',
+        maxLines: 3,
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        // Classes are typically longer than 3 lines
+        if (match.totalLines > 3) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(3);
+          expect(match.totalLines).toBeGreaterThan(3);
+        }
+      }
+    });
+
+    it('should handle maxLines = 1', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'export class $CLASS { $$$ }',
+        maxLines: 1,
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        const lines = match.text.split('\n');
+        expect(lines.length).toBe(1);
+        expect(match.totalLines).toBeGreaterThanOrEqual(1);
+      }
+    });
+
+    it('should default to maxLines = 3 when not specified', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'export class $CLASS { $$$ }',
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        // If class is longer than 3 lines, text should be truncated to 3
+        if (match.totalLines > 3) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(3);
+        }
+      }
+    });
+
+    it('should populate totalLines accurately', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'export class $CLASS { $$$ }',
+        maxLines: 5,
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        expect(match.totalLines).toBeGreaterThan(0);
+        expect(typeof match.totalLines).toBe('number');
+        // totalLines should match the line range
+        expect(match.totalLines).toBe(match.endLine - match.line + 1);
+      }
+    });
+
+    it('should handle match with exactly maxLines lines', async () => {
+      const workspace = process.cwd();
+      // Find a small function that's likely 3-5 lines
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'async isAvailable(): Promise<$TYPE> { $$$ }',
+        maxLines: 20,
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        // When text is not truncated, lines should equal totalLines
+        if (match.totalLines <= 20) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(match.totalLines);
+        }
+      }
+    });
+
+    it('should work with searchRule and maxLines', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchRule('test', workspace, {
+        language: 'typescript',
+        rule: {
+          pattern: 'export class $CLASS { $$$ }',
+        },
+        maxLines: 2,
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        if (match.totalLines > 2) {
+          const lines = match.text.split('\n');
+          expect(lines.length).toBe(2);
+        }
+        expect(match.totalLines).toBeGreaterThan(0);
+      }
+    });
+
+    it('should preserve metavariables with truncation', async () => {
+      const workspace = process.cwd();
+      const result = await service.searchPattern('test', workspace, {
+        language: 'typescript',
+        pattern: 'export class $CLASS { $$$ }',
+        maxLines: 2,
+        limit: 1,
+      });
+
+      if (result.matches.length > 0) {
+        const match = result.matches[0];
+        expect(match.metaVariables).toBeDefined();
+        expect(match.metaVariables?.CLASS).toBeDefined();
+        expect(match.metaVariables?.CLASS.text).toBeTruthy();
+      }
+    });
+  });
 });

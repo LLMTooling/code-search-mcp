@@ -344,6 +344,10 @@ export class CodeSearchMCPServer {
                 type: 'number',
                 description: 'Maximum results to return (default: 100)',
               },
+              max_lines: {
+                type: 'number',
+                description: 'Maximum number of lines to include in match text (default: 3)',
+              },
             },
             required: ['workspace_id', 'language', 'pattern'],
           },
@@ -375,6 +379,10 @@ export class CodeSearchMCPServer {
               limit: {
                 type: 'number',
                 description: 'Maximum results to return (default: 100)',
+              },
+              max_lines: {
+                type: 'number',
+                description: 'Maximum number of lines to include in match text (default: 3)',
               },
               debug: {
                 type: 'boolean',
@@ -822,6 +830,7 @@ export class CodeSearchMCPServer {
       pattern: args.pattern as string,
       paths: args.paths as string[] | undefined,
       limit: args.limit as number | undefined,
+      maxLines: args.max_lines as number | undefined,
     });
 
     return {
@@ -861,6 +870,7 @@ export class CodeSearchMCPServer {
       rule,
       paths: args.paths as string[] | undefined,
       limit: args.limit as number | undefined,
+      maxLines: args.max_lines as number | undefined,
       debug: args.debug as boolean | undefined,
     });
 

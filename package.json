@@ -14,8 +14,8 @@
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
     "typecheck": "tsc --noEmit",
-    "test": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest",
-    "test:integration": "NODE_OPTIONS='--experimental-vm-modules --no-warnings' jest --testMatch='**/tests/integration/**/*.test.ts'",
+    "test": "node --experimental-vm-modules --no-warnings node_modules/jest/bin/jest.js",
+    "test:integration": "node --experimental-vm-modules --no-warnings node_modules/jest/bin/jest.js --testMatch='**/tests/integration/**/*.test.ts'",
     "prepublishOnly": "npm run build"
   },
   "keywords": [

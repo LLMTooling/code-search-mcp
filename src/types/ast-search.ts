@@ -83,6 +83,8 @@ export interface ASTMatch {
   endLine: number;
   endColumn: number;
   text: string;
+  /** Total number of lines in the full match (before truncation) */
+  totalLines: number;
   metaVariables?: Record<string, {
     text: string;
     line: number;
@@ -100,6 +102,8 @@ export interface ASTPatternSearchOptions {
   paths?: string[];
   /** Maximum number of results to return */
   limit?: number;
+  /** Maximum number of lines to include in match text (default: 3) */
+  maxLines?: number;
   /** Show only matched text without context */
   compactMode?: boolean;
 }
@@ -114,6 +118,8 @@ export interface ASTRuleSearchOptions {
   paths?: string[];
   /** Maximum number of results to return */
   limit?: number;
+  /** Maximum number of lines to include in match text (default: 3) */
+  maxLines?: number;
   /** Show only matched text without context */
   compactMode?: boolean;
   /** Debug mode: show AST structure */

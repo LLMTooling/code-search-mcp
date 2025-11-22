@@ -102,13 +102,17 @@ export class ASTSearchService {
 
         for (const node of nodes) {
           const range = node.range();
+          const fullText = node.text();
+          const { truncated, totalLines } = this.truncateText(fullText, options.maxLines ?? 3);
+
           const match: ASTMatch = {
             file,
             line: range.start.line + 1, // Convert to 1-indexed
             column: range.start.column + 1,
             endLine: range.end.line + 1,
             endColumn: range.end.column + 1,
-            text: node.text(),
+            text: truncated,
+            totalLines,
           };
 
           // Extract metavariables if present
@@ -179,13 +183,17 @@ export class ASTSearchService {
 
         for (const node of nodes) {
           const range = node.range();
+          const fullText = node.text();
+          const { truncated, totalLines } = this.truncateText(fullText, options.maxLines ?? 3);
+
           const match: ASTMatch = {
             file,
             line: range.start.line + 1, // Convert to 1-indexed
             column: range.start.column + 1,
             endLine: range.end.line + 1,
             endColumn: range.end.column + 1,
-            text: node.text(),
+            text: truncated,
+            totalLines,
           };
 
           // Try to extract metavariables
@@ -558,5 +566,23 @@ export class ASTSearchService {
       valid: errors.length === 0,
       errors,
     };
+  }
+
+  /**
+   * Truncate match text to specified number of lines
+   */
+  private truncateText(text: string, maxLines: number = 3): { truncated: string; totalLines: number } {
+    const lines = text.split('\n');
+    const totalLines = lines.length;
+
+    if (totalLines <= maxLines) {
+      return { truncated: text, totalLines };
+    }
+
+    // Return first maxLines lines
+    const truncatedLines = lines.slice(0, maxLines);
+    const truncated = truncatedLines.join('\n');
+
+    return { truncated, totalLines };
   }
 }
