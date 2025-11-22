@@ -4,9 +4,21 @@
  */
 
 import { parse, Lang, registerDynamicLanguage } from '@ast-grep/napi';
+import langBash = require('@ast-grep/lang-bash');
+import langC = require('@ast-grep/lang-c');
+import langCpp = require('@ast-grep/lang-cpp');
+import langCsharp = require('@ast-grep/lang-csharp');
+import langGo = require('@ast-grep/lang-go');
+import langJava = require('@ast-grep/lang-java');
+import langJson = require('@ast-grep/lang-json');
+import langKotlin = require('@ast-grep/lang-kotlin');
+import langPython = require('@ast-grep/lang-python');
 import langRust = require('@ast-grep/lang-rust');
-import langTypeScript = require('@ast-grep/lang-typescript');
+import langScala = require('@ast-grep/lang-scala');
+import langSwift = require('@ast-grep/lang-swift');
 import langTsx = require('@ast-grep/lang-tsx');
+import langTypeScript = require('@ast-grep/lang-typescript');
+import langYaml = require('@ast-grep/lang-yaml');
 import { promises as fs } from 'fs';
 import path from 'path';
 import fastGlob from 'fast-glob';
@@ -29,9 +41,21 @@ let languagesRegistered = false;
 function ensureLanguagesRegistered() {
   if (!languagesRegistered) {
     registerDynamicLanguage({
+      bash: langBash as any,
+      c: langC as any,
+      cpp: langCpp as any,
+      csharp: langCsharp as any,
+      go: langGo as any,
+      java: langJava as any,
+      json: langJson as any,
+      kotlin: langKotlin as any,
+      python: langPython as any,
       rust: langRust as any,
-      typescript: langTypeScript as any,
+      scala: langScala as any,
+      swift: langSwift as any,
       tsx: langTsx as any,
+      typescript: langTypeScript as any,
+      yaml: langYaml as any,
     });
     languagesRegistered = true;
   }
@@ -40,28 +64,62 @@ function ensureLanguagesRegistered() {
 // Language mapping from our types to ast-grep NapiLang
 // Includes built-in languages and dynamically registered language packages
 const LANGUAGE_MAP: Record<ASTLanguage, NapiLang> = {
-  javascript: Lang.JavaScript,
-  typescript: 'typescript',
-  tsx: 'tsx',
-  html: Lang.Html,
+  bash: 'bash',
+  c: 'c',
+  cpp: 'cpp',
+  csharp: 'csharp',
   css: Lang.Css,
+  go: 'go',
+  html: Lang.Html,
+  java: 'java',
+  javascript: Lang.JavaScript,
+  json: 'json',
+  kotlin: 'kotlin',
+  python: 'python',
   rust: 'rust',
+  scala: 'scala',
+  swift: 'swift',
+  tsx: 'tsx',
+  typescript: 'typescript',
+  yaml: 'yaml',
 };
 
 // File extension to language mapping
 const EXTENSION_MAP: Record<string, ASTLanguage> = {
+  '.c': 'c',
+  '.h': 'c',
+  '.cpp': 'cpp',
+  '.cc': 'cpp',
+  '.cxx': 'cpp',
+  '.hpp': 'cpp',
+  '.hxx': 'cpp',
+  '.cs': 'csharp',
+  '.css': 'css',
+  '.go': 'go',
+  '.html': 'html',
+  '.htm': 'html',
+  '.java': 'java',
   '.js': 'javascript',
   '.mjs': 'javascript',
   '.cjs': 'javascript',
   '.jsx': 'javascript',
+  '.json': 'json',
+  '.kt': 'kotlin',
+  '.kts': 'kotlin',
+  '.py': 'python',
+  '.pyw': 'python',
+  '.rs': 'rust',
+  '.scala': 'scala',
+  '.sc': 'scala',
+  '.sh': 'bash',
+  '.bash': 'bash',
+  '.swift': 'swift',
   '.ts': 'typescript',
   '.mts': 'typescript',
   '.cts': 'typescript',
   '.tsx': 'tsx',
-  '.html': 'html',
-  '.htm': 'html',
-  '.css': 'css',
-  '.rs': 'rust',
+  '.yaml': 'yaml',
+  '.yml': 'yaml',
 };
 
 export class ASTSearchService {
@@ -74,16 +132,17 @@ export class ASTSearchService {
       ensureLanguagesRegistered();
 
       // Try to access the Lang enum and language packages to verify modules load
-      const testLang = Lang.JavaScript;
-      const testRust = langRust;
-      const testTs = langTypeScript;
-      const testTsx = langTsx;
+      const testBuiltIn = Lang.JavaScript;
+      const testPython = langPython;
+      const testGo = langGo;
+      const testJava = langJava;
 
-      if (testLang !== undefined && testRust !== undefined && testTs !== undefined && testTsx !== undefined) {
+      if (testBuiltIn !== undefined && testPython !== undefined && testGo !== undefined && testJava !== undefined) {
+        const supportedLangs = Object.keys(LANGUAGE_MAP).sort().join(', ');
         return {
           available: true,
           version: '0.40.0', // @ast-grep packages version
-          path: 'bundled (native + language packages: rust, typescript, tsx)',
+          path: `bundled (15 languages: ${supportedLangs})`,
         };
       }
       throw new Error('Failed to load ast-grep modules');

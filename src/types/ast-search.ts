@@ -7,12 +7,24 @@
  * Includes built-in languages and dynamically loaded language packages
  */
 export type ASTLanguage =
-  | 'javascript'
-  | 'typescript'
-  | 'tsx'
-  | 'html'
+  | 'bash'
+  | 'c'
+  | 'cpp'
+  | 'csharp'
   | 'css'
-  | 'rust';
+  | 'go'
+  | 'html'
+  | 'java'
+  | 'javascript'
+  | 'json'
+  | 'kotlin'
+  | 'python'
+  | 'rust'
+  | 'scala'
+  | 'swift'
+  | 'tsx'
+  | 'typescript'
+  | 'yaml';
 
 /**
  * Stop-by directive for relational rules

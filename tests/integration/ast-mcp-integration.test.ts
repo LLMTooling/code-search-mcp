@@ -283,7 +283,8 @@ describe('AST MCP Integration Tests', () => {
 
       if (info.available) {
         expect(info.version).toBeDefined();
-        expect(info.path).toBe('bundled (native)');
+        expect(info.path).toContain('bundled');
+        expect(info.path).toContain('languages');
       }
     });
   });

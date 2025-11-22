@@ -282,6 +282,138 @@ describe('AST Search Integration', () => {
     });
   });
 
+  describe('Python Support', () => {
+    it('should search Python files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'python',
+        pattern: 'def $NAME($$$): $$$',
+      });
+
+      expect(result.language).toBe('python');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Python class definitions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'python',
+        pattern: 'class $NAME: $$$',
+      });
+
+      expect(result.language).toBe('python');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Python async functions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'python',
+        pattern: 'async def $NAME($$$): $$$',
+      });
+
+      expect(result.language).toBe('python');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('Go Support', () => {
+    it('should search Go files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'go',
+        pattern: 'func $NAME($$$) $$$',
+      });
+
+      expect(result.language).toBe('go');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Go struct definitions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'go',
+        pattern: 'type $NAME struct { $$$ }',
+      });
+
+      expect(result.language).toBe('go');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Go methods', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'go',
+        pattern: 'func ($$$) $NAME($$$) $$$',
+      });
+
+      expect(result.language).toBe('go');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('Java Support', () => {
+    it('should search Java files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'java',
+        pattern: 'public class $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('java');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Java methods', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'java',
+        pattern: 'public $TYPE $NAME($$$) { $$$ }',
+      });
+
+      expect(result.language).toBe('java');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Java interfaces', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'java',
+        pattern: 'interface $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('java');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle invalid patterns gracefully', async () => {
       if (!astGrepAvailable) {
@@ -678,4 +810,112 @@ impl Printable for User {
 }
 `;
   await fs.writeFile(path.join(dir, 'test.rs'), rustContent, 'utf-8');
+
+  // Python test file
+  const pythonContent = `
+# Basic class
+class User:
+    def __init__(self, name: str, age: int):
+        self.name = name
+        self.age = age
+
+    def greet(self) -> str:
+        return f"Hello, I'm {self.name}"
+
+# Function with type hints
+def process_data(data: list[str]) -> dict[str, int]:
+    result = {}
+    for item in data:
+        result[item] = len(item)
+    return result
+
+# Async function
+async def fetch_user(user_id: int) -> User:
+    # Simulate async operation
+    await asyncio.sleep(0.1)
+    return User("Alice", 30)
+
+# Decorator
+@staticmethod
+def validate(value: str) -> bool:
+    return len(value) > 0
+`;
+  await fs.writeFile(path.join(dir, 'test.py'), pythonContent, 'utf-8');
+
+  // Go test file
+  const goContent = `
+package main
+
+import "fmt"
+
+// Basic struct
+type User struct {
+    Name string
+    Age  int
+}
+
+// Method on struct
+func (u *User) Greet() string {
+    return fmt.Sprintf("Hello, I'm %s", u.Name)
+}
+
+// Function
+func processData(data []string) map[string]int {
+    result := make(map[string]int)
+    for _, item := range data {
+        result[item] = len(item)
+    }
+    return result
+}
+
+// Interface
+type Greeter interface {
+    Greet() string
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.go'), goContent, 'utf-8');
+
+  // Java test file
+  const javaContent = `
+package com.example;
+
+import java.util.List;
+import java.util.Map;
+
+// Basic class
+public class User {
+    private String name;
+    private int age;
+
+    public User(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String greet() {
+        return String.format("Hello, I'm %s", this.name);
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+
+// Interface
+interface Greeter {
+    String greet();
+}
+
+// Static method
+public class Utils {
+    public static boolean validate(String value) {
+        return value != null && !value.isEmpty();
+    }
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.java'), javaContent, 'utf-8');
 }
