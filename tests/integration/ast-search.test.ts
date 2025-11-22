@@ -215,6 +215,73 @@ describe('AST Search Integration', () => {
     });
   });
 
+  describe('Rust Support', () => {
+    it('should search Rust files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'rust',
+        pattern: 'fn $NAME($$$) { $$$ }',
+      });
+
+      expect(result.language).toBe('rust');
+      expect(result.matches.length).toBeGreaterThan(0);
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+
+    it('should find Rust struct definitions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const rule: ASTRule = {
+        pattern: 'struct $NAME { $$$ }',
+      };
+
+      const result = await service.searchRule('test-workspace', tempDir, {
+        language: 'rust',
+        rule,
+      });
+
+      expect(result.language).toBe('rust');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Rust impl blocks', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'rust',
+        pattern: 'impl $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('rust');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+
+    it('should find Rust async functions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const rule: ASTRule = {
+        pattern: 'async fn $NAME($$$) { $$$ }',
+      };
+
+      const result = await service.searchRule('test-workspace', tempDir, {
+        language: 'rust',
+        rule,
+      });
+
+      expect(result.language).toBe('rust');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle invalid patterns gracefully', async () => {
       if (!astGrepAvailable) {
@@ -551,4 +618,64 @@ const getUserStatus = (user: User): Status => {
   }
 }`;
   await fs.writeFile(path.join(dir, 'large.ts'), largeClassContent, 'utf-8');
+
+  // Rust test file
+  const rustContent = `
+// Basic struct
+struct User {
+    name: String,
+    age: u32,
+}
+
+// Struct with lifetime
+struct Product<'a> {
+    id: u32,
+    title: &'a str,
+    price: f64,
+}
+
+// Regular function
+fn greet(name: &str) -> String {
+    format!("Hello, {}!", name)
+}
+
+// Function with multiple parameters
+fn add(a: i32, b: i32) -> i32 {
+    a + b
+}
+
+// Async function
+async fn fetch_data() -> Result<String, Box<dyn std::error::Error>> {
+    Ok("data".to_string())
+}
+
+// Implementation block
+impl User {
+    fn new(name: String, age: u32) -> Self {
+        User { name, age }
+    }
+
+    fn greet(&self) -> String {
+        format!("Hello, I'm {} and I'm {} years old", self.name, self.age)
+    }
+}
+
+// Generic function
+fn first<T>(items: Vec<T>) -> Option<T> {
+    items.into_iter().next()
+}
+
+// Trait definition
+trait Printable {
+    fn print(&self);
+}
+
+// Trait implementation
+impl Printable for User {
+    fn print(&self) {
+        println!("{}: {}", self.name, self.age);
+    }
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.rs'), rustContent, 'utf-8');
 }

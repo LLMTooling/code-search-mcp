@@ -4,14 +4,15 @@
 
 /**
  * Supported programming languages for AST search
- * These are the languages built into @ast-grep/napi
+ * Includes built-in languages and dynamically loaded language packages
  */
 export type ASTLanguage =
   | 'javascript'
   | 'typescript'
   | 'tsx'
   | 'html'
-  | 'css';
+  | 'css'
+  | 'rust';
 
 /**
  * Stop-by directive for relational rules

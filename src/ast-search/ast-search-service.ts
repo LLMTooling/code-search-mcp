@@ -1,9 +1,12 @@
 /**
  * AST search service using ast-grep NAPI for structural code search
- * Uses bundled native binaries - no external installation required
+ * Uses bundled native binaries and language packages - no external installation required
  */
 
-import { parse, Lang } from '@ast-grep/napi';
+import { parse, Lang, registerDynamicLanguage } from '@ast-grep/napi';
+import langRust = require('@ast-grep/lang-rust');
+import langTypeScript = require('@ast-grep/lang-typescript');
+import langTsx = require('@ast-grep/lang-tsx');
 import { promises as fs } from 'fs';
 import path from 'path';
 import fastGlob from 'fast-glob';
@@ -17,14 +20,32 @@ import type {
   ASTLanguage,
 } from '../types/ast-search.js';
 
-// Language mapping from our types to ast-grep Lang enum
-// Only includes languages built into @ast-grep/napi
-const LANGUAGE_MAP: Record<ASTLanguage, Lang> = {
+// Type for ast-grep language (built-in or custom string)
+type NapiLang = Lang | string;
+
+// Register dynamic languages once
+let languagesRegistered = false;
+
+function ensureLanguagesRegistered() {
+  if (!languagesRegistered) {
+    registerDynamicLanguage({
+      rust: langRust as any,
+      typescript: langTypeScript as any,
+      tsx: langTsx as any,
+    });
+    languagesRegistered = true;
+  }
+}
+
+// Language mapping from our types to ast-grep NapiLang
+// Includes built-in languages and dynamically registered language packages
+const LANGUAGE_MAP: Record<ASTLanguage, NapiLang> = {
   javascript: Lang.JavaScript,
-  typescript: Lang.TypeScript,
-  tsx: Lang.Tsx,
+  typescript: 'typescript',
+  tsx: 'tsx',
   html: Lang.Html,
   css: Lang.Css,
+  rust: 'rust',
 };
 
 // File extension to language mapping
@@ -40,6 +61,7 @@ const EXTENSION_MAP: Record<string, ASTLanguage> = {
   '.html': 'html',
   '.htm': 'html',
   '.css': 'css',
+  '.rs': 'rust',
 };
 
 export class ASTSearchService {
@@ -48,16 +70,23 @@ export class ASTSearchService {
    */
   async isAvailable(): Promise<ASTGrepInfo> {
     try {
-      // Try to access the Lang enum to verify the module loads
+      // Ensure dynamic languages are registered
+      ensureLanguagesRegistered();
+
+      // Try to access the Lang enum and language packages to verify modules load
       const testLang = Lang.JavaScript;
-      if (testLang !== undefined) {
+      const testRust = langRust;
+      const testTs = langTypeScript;
+      const testTsx = langTsx;
+
+      if (testLang !== undefined && testRust !== undefined && testTs !== undefined && testTsx !== undefined) {
         return {
           available: true,
-          version: '0.40.0', // @ast-grep/napi version
-          path: 'bundled (native)',
+          version: '0.40.0', // @ast-grep packages version
+          path: 'bundled (native + language packages: rust, typescript, tsx)',
         };
       }
-      throw new Error('Failed to load ast-grep module');
+      throw new Error('Failed to load ast-grep modules');
     } catch (error) {
       return {
         available: false,
@@ -74,6 +103,9 @@ export class ASTSearchService {
     workspacePath: string,
     options: ASTPatternSearchOptions
   ): Promise<ASTSearchResult> {
+    // Ensure dynamic languages are registered
+    ensureLanguagesRegistered();
+
     const startTime = Date.now();
 
     // Get files to search
@@ -155,6 +187,9 @@ export class ASTSearchService {
     workspacePath: string,
     options: ASTRuleSearchOptions
   ): Promise<ASTSearchResult> {
+    // Ensure dynamic languages are registered
+    ensureLanguagesRegistered();
+
     const startTime = Date.now();
 
     // Get files to search
