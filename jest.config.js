@@ -21,4 +21,6 @@ export default {
   collectCoverageFrom: ['src/**/*.ts'],
   coveragePathIgnorePatterns: ['/node_modules/', '/dist/'],
   testTimeout: 120000,
+  silent: true, // Suppress console output during tests
+  verbose: false, // Reduce output verbosity
 };

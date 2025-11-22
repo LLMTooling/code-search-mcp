@@ -124,6 +124,17 @@ export class TextSearchService {
       ) {
         return [];
       }
+
+      // Handle permission errors gracefully - skip unreadable files
+      const errorMessage = String(error);
+      if (errorMessage.includes('Permission denied')) {
+        // Parse any partial results we may have gotten before the error
+        if (error && typeof error === 'object' && 'stdout' in error && typeof error.stdout === 'string') {
+          return this.parseRipgrepJsonOutput(error.stdout);
+        }
+        return [];
+      }
+
       throw new Error(`Text search failed: ${String(error)}`);
     }
   }
