@@ -358,92 +358,74 @@ Search code using Abstract Syntax Tree analysis for structural pattern matching 
 <table>
   <tr>
     <th>Language</th>
-    <th>AST Support</th>
     <th>File Extensions</th>
   </tr>
   <tr>
     <td>Bash</td>
-    <td>✓ Full</td>
     <td>.sh, .bash</td>
   </tr>
   <tr>
     <td>C</td>
-    <td>✓ Full</td>
     <td>.c, .h</td>
   </tr>
   <tr>
     <td>C++</td>
-    <td>✓ Full</td>
     <td>.cpp, .cc, .cxx, .hpp, .hxx</td>
   </tr>
   <tr>
     <td>C#</td>
-    <td>✓ Full</td>
     <td>.cs</td>
   </tr>
   <tr>
     <td>CSS</td>
-    <td>✓ Full</td>
     <td>.css</td>
   </tr>
   <tr>
     <td>Go</td>
-    <td>✓ Full</td>
     <td>.go</td>
   </tr>
   <tr>
     <td>HTML</td>
-    <td>✓ Full</td>
     <td>.html, .htm</td>
   </tr>
   <tr>
     <td>Java</td>
-    <td>✓ Full</td>
     <td>.java</td>
   </tr>
   <tr>
     <td>JavaScript</td>
-    <td>✓ Full</td>
     <td>.js, .jsx, .mjs</td>
   </tr>
   <tr>
     <td>JSON</td>
-    <td>✓ Full</td>
     <td>.json</td>
   </tr>
   <tr>
     <td>Kotlin</td>
-    <td>✓ Full</td>
     <td>.kt, .kts</td>
   </tr>
   <tr>
     <td>Python</td>
-    <td>✓ Full</td>
     <td>.py</td>
   </tr>
   <tr>
     <td>Rust</td>
-    <td>✓ Full</td>
     <td>.rs</td>
   </tr>
   <tr>
     <td>Scala</td>
-    <td>✓ Full</td>
     <td>.scala</td>
   </tr>
   <tr>
     <td>Swift</td>
-    <td>✓ Full</td>
     <td>.swift</td>
   </tr>
   <tr>
     <td>TypeScript</td>
-    <td>✓ Full</td>
     <td>.ts, .tsx</td>
   </tr>
   <tr>
     <td>YAML</td>
-    <td>✓ Full</td>
     <td>.yml, .yaml</td>
   </tr>
 </table>
