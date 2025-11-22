@@ -28,6 +28,7 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@ast-grep/napi": "^0.40.0",
     "@LLMTooling/code-search-mcp-universal-ctags": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@vscode/ripgrep": "^1.17.0",

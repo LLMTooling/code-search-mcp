@@ -15,7 +15,7 @@
 
 <div align="center">
 
-Code Search MCP is a high-performance Model Context Protocol server that enables LLMs to intelligently search and analyze codebases across 12+ programming languages. Built on universal-ctags and ripgrep, it provides fast symbol search, text search, file search, and dependency analysis with persistent caching for 80%+ faster startup times.
+Code Search MCP is a high-performance Model Context Protocol server that enables LLMs to intelligently search and analyze codebases across 12 programming languages. Built on universal-ctags, ripgrep, and ast-grep, it provides fast symbol search, structural AST search, text search, file search, and dependency analysis with persistent caching for 80%+ faster startup times.
 
 </div>
 
@@ -34,6 +34,11 @@ Code Search MCP is a high-performance Model Context Protocol server that enables
     <td>Symbol Search</td>
     <td>Find classes, functions, methods, and variables with intelligent filtering</td>
     <td>Fast (indexed)</td>
+  </tr>
+  <tr>
+    <td>AST Search</td>
+    <td>Structural code search using Abstract Syntax Trees with metavariables and relational rules</td>
+    <td>Fast</td>
   </tr>
   <tr>
     <td>Text Search</td>
@@ -217,6 +222,21 @@ The server exposes the following tools through the Model Context Protocol interf
     <td>Clear cached indices</td>
     <td>workspace_id (optional)</td>
   </tr>
+  <tr>
+    <td><code>search_ast_pattern</code></td>
+    <td>Search using AST patterns with metavariables</td>
+    <td>workspace_id, language, pattern, paths, limit</td>
+  </tr>
+  <tr>
+    <td><code>search_ast_rule</code></td>
+    <td>Search using complex AST rules with relational and composite operators</td>
+    <td>workspace_id, language, rule, paths, limit, debug</td>
+  </tr>
+  <tr>
+    <td><code>check_ast_grep</code></td>
+    <td>Check ast-grep availability and version</td>
+    <td>None</td>
+  </tr>
 </table>
 </div>
 
@@ -247,6 +267,93 @@ The server exposes the following tools through the Model Context Protocol interf
     <td>extension, directory, case sensitivity</td>
   </tr>
 </table>
+</div>
+
+<div align="center">
+  <h2>AST Search</h2>
+</div>
+
+<div align="center">
+
+Search code using Abstract Syntax Tree analysis for structural pattern matching that goes beyond simple text search.
+
+</div>
+
+<div align="center">
+<table>
+  <tr>
+    <th>Capability</th>
+    <th>Description</th>
+    <th>Example Pattern</th>
+  </tr>
+  <tr>
+    <td>Metavariables</td>
+    <td>Capture and match code elements</td>
+    <td><code>$VAR</code> (named), <code>$$VAR</code> (anonymous), <code>$$$VAR</code> (multiple)</td>
+  </tr>
+  <tr>
+    <td>Relational Rules</td>
+    <td>Context-aware matching</td>
+    <td><code>inside</code>, <code>has</code>, <code>precedes</code>, <code>follows</code></td>
+  </tr>
+  <tr>
+    <td>Composite Rules</td>
+    <td>Logical combinations</td>
+    <td><code>all</code> (AND), <code>any</code> (OR), <code>not</code> (negation)</td>
+  </tr>
+  <tr>
+    <td>Kind Matching</td>
+    <td>Match specific AST node types</td>
+    <td><code>function_declaration</code>, <code>class_declaration</code>, etc.</td>
+  </tr>
+</table>
+</div>
+
+<div align="center">
+
+**AST Search Examples:**
+
+</div>
+
+```javascript
+// Find async functions without await
+{
+  "rule": {
+    "all": [
+      { "pattern": "async function $NAME($$$) { $$$ }" },
+      { "not": { "has": { "pattern": "await $$$", "stopBy": "end" } } }
+    ]
+  }
+}
+
+// Find React components using useEffect without dependencies
+{
+  "rule": {
+    "all": [
+      { "pattern": "useEffect($$$)" },
+      { "not": { "pattern": "useEffect($CALLBACK, [$$$DEPS])" } }
+    ]
+  }
+}
+
+// Find functions with console.log inside
+{
+  "rule": {
+    "pattern": "console.log($$$)",
+    "inside": {
+      "pattern": "function $NAME($$$) { $$$ }",
+      "stopBy": "end"
+    }
+  }
+}
+```
+
+<div align="center">
+
+**Supported Languages:** JavaScript, TypeScript, TSX, HTML, CSS
+
+*Note: @ast-grep/napi includes these 5 languages by default. Additional language support can be added via dynamic language packages if needed.*
+
 </div>
 
 <div align="center">
@@ -392,6 +499,8 @@ sudo apt-get install ripgrep
 
 # Windows (via Chocolatey)
 choco install ripgrep
+
+# ast-grep is bundled with the MCP server - no separate installation needed!
 ```
 
 <div align="center">
@@ -494,6 +603,10 @@ The server is built with a modular architecture for maintainability and extensib
     <td>Cache Manager</td>
     <td>Index persistence and invalidation</td>
   </tr>
+  <tr>
+    <td>AST Search Service</td>
+    <td>Structural code search using ast-grep</td>
+  </tr>
 </table>
 </div>
 
@@ -534,6 +647,10 @@ MIT License - see [LICENSE](LICENSE) for details
   <tr>
     <td><a href="https://github.com/BurntSushi/ripgrep">ripgrep</a></td>
     <td>Text search</td>
+  </tr>
+  <tr>
+    <td><a href="https://ast-grep.github.io/">ast-grep</a></td>
+    <td>AST-based structural search</td>
   </tr>
   <tr>
     <td><a href="https://github.com/modelcontextprotocol/sdk">MCP SDK</a></td>
