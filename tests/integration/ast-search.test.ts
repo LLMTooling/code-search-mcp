@@ -414,6 +414,402 @@ describe('AST Search Integration', () => {
     });
   });
 
+  describe('C Support', () => {
+    it('should search C files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'c',
+        pattern: 'int $NAME($$$) { $$$ }',
+      });
+
+      expect(result.language).toBe('c');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find C struct definitions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'c',
+        pattern: 'struct $NAME',
+      });
+
+      expect(result.language).toBe('c');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find C function declarations', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'c',
+        pattern: 'void $NAME($$$)',
+      });
+
+      expect(result.language).toBe('c');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('C++ Support', () => {
+    it('should search C++ files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'cpp',
+        pattern: 'class $NAME',
+      });
+
+      expect(result.language).toBe('cpp');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find C++ template functions', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'cpp',
+        pattern: 'template<$$$> $$$',
+      });
+
+      expect(result.language).toBe('cpp');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find C++ namespaces', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'cpp',
+        pattern: 'namespace $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('cpp');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('C# Support', () => {
+    it('should search C# files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'csharp',
+        pattern: 'public class $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('csharp');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find C# interfaces', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'csharp',
+        pattern: 'public interface $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('csharp');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find C# static methods', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'csharp',
+        pattern: 'public static $TYPE $NAME($$$)',
+      });
+
+      expect(result.language).toBe('csharp');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('Kotlin Support', () => {
+    it('should search Kotlin files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'kotlin',
+        pattern: 'fun $NAME($$$): $$$',
+      });
+
+      expect(result.language).toBe('kotlin');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Kotlin data classes', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'kotlin',
+        pattern: 'data class $NAME($$$)',
+      });
+
+      expect(result.language).toBe('kotlin');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Kotlin objects', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'kotlin',
+        pattern: 'object $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('kotlin');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('Scala Support', () => {
+    it('should search Scala files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'scala',
+        pattern: 'def $NAME($$$): $$$',
+      });
+
+      expect(result.language).toBe('scala');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Scala case classes', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'scala',
+        pattern: 'case class $NAME($$$)',
+      });
+
+      expect(result.language).toBe('scala');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Scala traits', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'scala',
+        pattern: 'trait $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('scala');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('Swift Support', () => {
+    it('should search Swift files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'swift',
+        pattern: 'func $NAME($$$) -> $$$',
+      });
+
+      expect(result.language).toBe('swift');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Swift structs', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'swift',
+        pattern: 'struct $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('swift');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Swift protocols', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'swift',
+        pattern: 'protocol $NAME { $$$ }',
+      });
+
+      expect(result.language).toBe('swift');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('Bash Support', () => {
+    it('should search Bash files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'bash',
+        pattern: 'echo $$$',
+      });
+
+      expect(result.language).toBe('bash');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Bash conditionals', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'bash',
+        pattern: 'if $$$',
+      });
+
+      expect(result.language).toBe('bash');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find Bash case statements', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'bash',
+        pattern: 'case $$$',
+      });
+
+      expect(result.language).toBe('bash');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('JSON Support', () => {
+    it('should search JSON files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'json',
+        pattern: '"name"',
+      });
+
+      expect(result.language).toBe('json');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find JSON object properties', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'json',
+        pattern: '"dependencies"',
+      });
+
+      expect(result.language).toBe('json');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find JSON arrays', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'json',
+        pattern: '"keywords": $ARRAY',
+      });
+
+      expect(result.language).toBe('json');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
+  describe('YAML Support', () => {
+    it('should search YAML files with patterns', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'yaml',
+        pattern: 'name: $VALUE',
+      });
+
+      expect(result.language).toBe('yaml');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find YAML nested objects', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'yaml',
+        pattern: 'author: $$$',
+      });
+
+      expect(result.language).toBe('yaml');
+      expect(result.matches.length).toBeGreaterThan(0);
+    });
+
+    it('should find YAML arrays', async () => {
+      if (!astGrepAvailable) {
+        return;
+      }
+
+      const result = await service.searchPattern('test-workspace', tempDir, {
+        language: 'yaml',
+        pattern: 'keywords: $$$',
+      });
+
+      expect(result.language).toBe('yaml');
+      expect(Array.isArray(result.matches)).toBe(true);
+    });
+  });
+
   describe('Error Handling', () => {
     it('should handle invalid patterns gracefully', async () => {
       if (!astGrepAvailable) {
@@ -918,4 +1314,362 @@ public class Utils {
 }
 `;
   await fs.writeFile(path.join(dir, 'test.java'), javaContent, 'utf-8');
+
+  // C test file
+  const cContent = `
+#include <stdio.h>
+#include <stdlib.h>
+
+// Struct definition
+struct User {
+    char name[50];
+    int age;
+};
+
+// Function declaration
+int add(int a, int b);
+
+// Function definition
+int add(int a, int b) {
+    return a + b;
+}
+
+// Function with struct
+void greet(struct User *user) {
+    printf("Hello, %s!\\n", user->name);
+}
+
+// Main function
+int main() {
+    struct User user = {"Alice", 30};
+    greet(&user);
+    return 0;
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.c'), cContent, 'utf-8');
+
+  // C++ test file
+  const cppContent = `
+#include <iostream>
+#include <string>
+#include <vector>
+
+// Class definition
+class User {
+private:
+    std::string name;
+    int age;
+
+public:
+    User(std::string name, int age) : name(name), age(age) {}
+
+    std::string greet() {
+        return "Hello, I'm " + name;
+    }
+
+    std::string getName() const {
+        return name;
+    }
+};
+
+// Template function
+template<typename T>
+T max(T a, T b) {
+    return (a > b) ? a : b;
+}
+
+// Namespace
+namespace utils {
+    bool validate(std::string value) {
+        return !value.empty();
+    }
+}
+
+// Main function
+int main() {
+    User user("Alice", 30);
+    std::cout << user.greet() << std::endl;
+    return 0;
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.cpp'), cppContent, 'utf-8');
+
+  // C# test file
+  const csharpContent = `
+using System;
+using System.Collections.Generic;
+
+namespace Example
+{
+    // Class definition
+    public class User
+    {
+        private string name;
+        private int age;
+
+        public User(string name, int age)
+        {
+            this.name = name;
+            this.age = age;
+        }
+
+        public string Greet()
+        {
+            return $"Hello, I'm {name}";
+        }
+
+        public string Name
+        {
+            get { return name; }
+            set { name = value; }
+        }
+    }
+
+    // Interface
+    public interface IGreeter
+    {
+        string Greet();
+    }
+
+    // Static class
+    public static class Utils
+    {
+        public static bool Validate(string value)
+        {
+            return !string.IsNullOrEmpty(value);
+        }
+    }
+
+    // Program class with Main
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            var user = new User("Alice", 30);
+            Console.WriteLine(user.Greet());
+        }
+    }
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.cs'), csharpContent, 'utf-8');
+
+  // Kotlin test file
+  const kotlinContent = `
+package com.example
+
+// Data class
+data class User(val name: String, val age: Int) {
+    fun greet(): String {
+        return "Hello, I'm $name"
+    }
+}
+
+// Regular class
+class Product(val id: Int, val title: String) {
+    fun getDescription(): String {
+        return "$id: $title"
+    }
+}
+
+// Function
+fun processData(data: List<String>): Map<String, Int> {
+    return data.associateWith { it.length }
+}
+
+// Extension function
+fun String.isValidEmail(): Boolean {
+    return this.contains("@")
+}
+
+// Interface
+interface Greeter {
+    fun greet(): String
+}
+
+// Object (singleton)
+object Utils {
+    fun validate(value: String): Boolean {
+        return value.isNotEmpty()
+    }
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.kt'), kotlinContent, 'utf-8');
+
+  // Scala test file
+  const scalaContent = `
+package com.example
+
+// Case class
+case class User(name: String, age: Int) {
+  def greet(): String = s"Hello, I'm $name"
+}
+
+// Regular class
+class Product(val id: Int, val title: String) {
+  def getDescription: String = s"$id: $title"
+}
+
+// Object (singleton)
+object Utils {
+  def validate(value: String): Boolean = {
+    value.nonEmpty
+  }
+}
+
+// Trait (interface)
+trait Greeter {
+  def greet(): String
+}
+
+// Function
+def processData(data: List[String]): Map[String, Int] = {
+  data.map(s => s -> s.length).toMap
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.scala'), scalaContent, 'utf-8');
+
+  // Swift test file
+  const swiftContent = `
+import Foundation
+
+// Struct
+struct User {
+    var name: String
+    var age: Int
+
+    func greet() -> String {
+        return "Hello, I'm \\(name)"
+    }
+}
+
+// Class
+class Product {
+    var id: Int
+    var title: String
+
+    init(id: Int, title: String) {
+        self.id = id
+        self.title = title
+    }
+
+    func getDescription() -> String {
+        return "\\(id): \\(title)"
+    }
+}
+
+// Protocol (interface)
+protocol Greeter {
+    func greet() -> String
+}
+
+// Extension
+extension String {
+    func isValidEmail() -> Bool {
+        return self.contains("@")
+    }
+}
+
+// Function
+func processData(_ data: [String]) -> [String: Int] {
+    return data.reduce(into: [:]) { $0[$1] = $1.count }
+}
+`;
+  await fs.writeFile(path.join(dir, 'test.swift'), swiftContent, 'utf-8');
+
+  // Bash test file
+  const bashContent = `#!/bin/bash
+
+# Function definition
+greet() {
+    local name=$1
+    echo "Hello, $name!"
+}
+
+# Function with return
+add() {
+    local a=$1
+    local b=$2
+    echo $((a + b))
+}
+
+# Conditional
+if [ "$USER" = "root" ]; then
+    echo "Running as root"
+else
+    echo "Running as regular user"
+fi
+
+# Loop
+for i in {1..5}; do
+    echo "Iteration $i"
+done
+
+# Case statement
+case "$1" in
+    start)
+        echo "Starting..."
+        ;;
+    stop)
+        echo "Stopping..."
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}"
+        ;;
+esac
+
+# Call function
+greet "Alice"
+`;
+  await fs.writeFile(path.join(dir, 'test.sh'), bashContent, 'utf-8');
+
+  // JSON test file
+  const jsonContent = `{
+  "name": "test-project",
+  "version": "1.0.0",
+  "description": "A test project",
+  "author": {
+    "name": "Alice",
+    "email": "alice@example.com"
+  },
+  "dependencies": {
+    "express": "^4.18.0",
+    "lodash": "^4.17.21"
+  },
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest"
+  },
+  "keywords": ["test", "example"],
+  "license": "MIT"
+}`;
+  await fs.writeFile(path.join(dir, 'test.json'), jsonContent, 'utf-8');
+
+  // YAML test file
+  const yamlContent = `name: test-project
+version: 1.0.0
+description: A test project
+
+author:
+  name: Alice
+  email: alice@example.com
+
+dependencies:
+  - express: ^4.18.0
+  - lodash: ^4.17.21
+
+scripts:
+  start: node index.js
+  test: jest
+
+keywords:
+  - test
+  - example
+
+license: MIT
+
+config:
+  port: 3000
+  debug: true
+`;
+  await fs.writeFile(path.join(dir, 'test.yaml'), yamlContent, 'utf-8');
 }
