@@ -183,7 +183,7 @@ describe('MCP Server Integration Tests', () => {
       const workspace = await workspaceManager.addWorkspace(repoPath!, 'TypeScript');
 
       expect(workspace).toBeDefined();
-      expect(workspace.id).toMatch(/^ws-\d+$/);
+      expect(workspace.id).toBe('typescript'); // ID is generated from directory name in kebab-case
       expect(workspace.name).toBe('TypeScript');
       expect(workspace.rootPath).toBe(repoPath);
       expect(workspace.createdAt).toBeInstanceOf(Date);
