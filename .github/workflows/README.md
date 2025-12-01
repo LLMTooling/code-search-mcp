@@ -46,7 +46,7 @@ Dedicated job for testing AST search functionality.
 ### Authentication
 
 The workflow uses `GITHUB_TOKEN` to authenticate with GitHub Packages for:
-- `@LLMTooling/code-search-mcp-universal-ctags`
+- `@LLMTooling/universal-ctags-node`
 - Other private GitHub packages in the `@LLMTooling` scope
 
 This token is automatically provided by GitHub Actions.

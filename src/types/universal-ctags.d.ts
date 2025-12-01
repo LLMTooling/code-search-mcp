@@ -1,7 +1,7 @@
 /**
- * Type declarations for @LLMTooling/code-search-mcp-universal-ctags
+ * Type declarations for @LLMTooling/universal-ctags-node
  */
-declare module '@LLMTooling/code-search-mcp-universal-ctags' {
+declare module '@LLMTooling/universal-ctags-node' {
   /**
    * Path to the universal-ctags binary
    */

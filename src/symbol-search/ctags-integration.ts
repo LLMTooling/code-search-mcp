@@ -6,7 +6,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import path from 'path';
-import { ctagsPath } from '@LLMTooling/code-search-mcp-universal-ctags';
+import { ctagsPath } from '@LLMTooling/universal-ctags-node';
 import type { CTagsTag, SupportedLanguage } from '../types/index.js';
 
 const execFileAsync = promisify(execFile);
