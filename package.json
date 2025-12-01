@@ -44,7 +44,7 @@
     "@ast-grep/lang-typescript": "^0.0.4",
     "@ast-grep/lang-yaml": "^0.0.3",
     "@ast-grep/napi": "^0.40.0",
-    "@LLMTooling/code-search-mcp-universal-ctags": "^0.1.0",
+    "@LLMTooling/universal-ctags-node": "^0.1.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
     "@vscode/ripgrep": "^1.17.0",
     "fast-glob": "^3.3.2",
