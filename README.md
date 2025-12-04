@@ -15,7 +15,7 @@
 
 <div align="center">
 
-Code Search MCP is a high-performance Model Context Protocol server that enables LLMs to intelligently search and analyze codebases across 12 programming languages with comprehensive AST search support for 15 languages. Built on universal-ctags, ripgrep, and ast-grep, it provides fast symbol search, structural AST pattern matching, text search, file search, and dependency analysis with persistent caching for 80%+ faster startup times.
+Code Search MCP is a high-performance Model Context Protocol server that enables LLMs to intelligently search and analyze codebases across 12 programming languages with comprehensive AST search support for 15 languages. Built on our [universal-ctags wrapper](https://github.com/LLMTooling/universal-ctags-node), ripgrep, and ast-grep, it provides fast symbol search, structural AST pattern matching, text search, file search, and dependency analysis with persistent caching for 80%+ faster startup times.
 
 </div>
 
@@ -591,7 +591,15 @@ choco install ripgrep
 </div>
 
 ```bash
-npm install -g code-search-mcp
+# Clone the repository
+git clone https://github.com/GhostTypes/code-search-mcp.git
+cd code-search-mcp
+
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
 ```
 
 <div align="center">
@@ -604,7 +612,10 @@ Add to your MCP settings file (e.g., `claude_desktop_config.json`):
 {
   "mcpServers": {
     "code-search": {
-      "command": "code-search-mcp"
+      "command": "node",
+      "args": [
+        "/path/to/code-search-mcp/dist/index.js"
+      ]
     }
   }
 }
