@@ -3,8 +3,26 @@ name: Tests
 on:
   pull_request:
     branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'jest.config.js'
+      - 'eslint.config.js'
+      - '.github/workflows/test.yml'
   push:
     branches: [main, master]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
+      - 'jest.config.js'
+      - 'eslint.config.js'
+      - '.github/workflows/test.yml'
   workflow_dispatch: # Allows manual trigger
 
 permissions:
