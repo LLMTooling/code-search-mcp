@@ -190,7 +190,7 @@ The server exposes the following tools through the Model Context Protocol interf
   <tr>
     <td><code>search_text</code></td>
     <td>Search code using regex patterns</td>
-    <td>workspace_id, pattern, language, case_insensitive</td>
+    <td>workspace_id, pattern, language, case_insensitive, literal, limit, paths</td>
   </tr>
   <tr>
     <td><code>search_files</code></td>

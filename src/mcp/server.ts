@@ -62,13 +62,13 @@ export class CodeSearchMCPServer {
     this.astSearchService = new ASTSearchService();
 
     // Initialize workspace manager to load persisted workspaces
-    this.workspaceManager.initialize().catch((error) => {
-      console.error('Failed to initialize workspace manager:', error);
+    this.workspaceManager.initialize().catch(() => {
+      // Silently fail - workspace manager will work without persisted state
     });
 
     // Initialize cache system
-    this.symbolIndexer.initialize().catch((error) => {
-      console.error('Failed to initialize cache system:', error);
+    this.symbolIndexer.initialize().catch(() => {
+      // Silently fail - indexing will work without cache
     });
 
     this.setupHandlers();
@@ -199,6 +199,11 @@ export class CodeSearchMCPServer {
               limit: {
                 type: 'number',
                 description: 'Maximum results to return',
+              },
+              paths: {
+                type: 'array',
+                items: { type: 'string' },
+                description: 'Specific file paths or glob patterns to search (relative to the workspace root)',
               },
             },
             required: ['workspace_id', 'pattern'],
@@ -568,12 +573,19 @@ export class CodeSearchMCPServer {
       throw new Error(`Workspace not found: ${workspaceId}`);
     }
 
+    const rawPaths = args.paths as string[] | string | undefined;
+    const includeGlobs = this.normalizeSearchPathFilters(
+      Array.isArray(rawPaths) ? rawPaths : rawPaths ? [rawPaths] : undefined,
+      workspace.rootPath
+    );
+
     const results = await this.textSearchService.searchText(workspace.rootPath, {
       pattern: args.pattern as string,
       language: args.language as never,
       caseInsensitive: args.case_insensitive as boolean | undefined,
       literal: args.literal as boolean | undefined,
       limit: args.limit as number | undefined,
+      include: includeGlobs,
     });
 
     return {
@@ -584,6 +596,57 @@ export class CodeSearchMCPServer {
         },
       ],
     };
+  }
+
+  private normalizeSearchPathFilters(
+    paths: string[] | undefined,
+    workspaceRoot: string
+  ): string[] | undefined {
+    if (!paths || paths.length === 0) {
+      return undefined;
+    }
+
+    const normalizedRoot = path.resolve(workspaceRoot);
+    const includeGlobs: string[] = [];
+    const seen = new Set<string>();
+
+    for (const rawPath of paths) {
+      if (!rawPath || typeof rawPath !== 'string') {
+        continue;
+      }
+
+      const trimmed = rawPath.trim();
+      if (!trimmed) {
+        continue;
+      }
+
+      if (trimmed.startsWith('!')) {
+        throw new Error(`paths entries cannot start with "!": ${rawPath}`);
+      }
+
+      const absoluteCandidate = path.isAbsolute(trimmed)
+        ? path.normalize(trimmed)
+        : path.normalize(path.join(normalizedRoot, trimmed));
+
+      const relativePath = path.relative(normalizedRoot, absoluteCandidate);
+
+      if (!relativePath || relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+        throw new Error(`Path "${rawPath}" is outside the workspace root`);
+      }
+
+      const glob = relativePath.split(path.sep).join('/');
+
+      if (!glob) {
+        throw new Error(`Path "${rawPath}" must resolve to a file or glob within the workspace`);
+      }
+
+      if (!seen.has(glob)) {
+        includeGlobs.push(glob);
+        seen.add(glob);
+      }
+    }
+
+    return includeGlobs.length > 0 ? includeGlobs : undefined;
   }
 
   private async handleSearchFiles(args: Record<string, unknown>) {
@@ -912,6 +975,5 @@ export class CodeSearchMCPServer {
   async start(): Promise<void> {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error('Code Search MCP Server running on stdio');
   }
 }

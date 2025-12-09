@@ -64,8 +64,7 @@ export class CacheManager {
 
     try {
       await fs.mkdir(this.cacheDir, { recursive: true });
-    } catch (error) {
-      console.error('Failed to initialize cache directory:', error);
+    } catch {
       this.enableCache = false;
     }
   }
@@ -155,8 +154,8 @@ export class CacheManager {
           // Skip files that can't be read
         }
       }
-    } catch (error) {
-      console.error('Error getting file mtimes:', error);
+    } catch {
+      // Silently handle errors
     }
 
     return mtimes;
@@ -212,14 +211,12 @@ export class CacheManager {
 
       // Validate cache version
       if (cached.metadata.version !== CACHE_VERSION) {
-        console.log(`Cache version mismatch: ${cached.metadata.version} !== ${CACHE_VERSION}`);
         return false;
       }
 
       // Validate workspace path hash
       const currentHash = this.hashWorkspacePath(workspacePath);
       if (cached.metadata.workspaceHash !== currentHash) {
-        console.log('Workspace path changed - cache invalid');
         return false;
       }
 
@@ -230,7 +227,6 @@ export class CacheManager {
       // Check for new files
       for (const file of Object.keys(currentMtimes)) {
         if (!(file in cachedMtimes)) {
-          console.log(`New file detected: ${file}`);
           return false;
         }
       }
@@ -240,18 +236,15 @@ export class CacheManager {
         const currentMtime = currentMtimes[file];
         if (currentMtime === undefined) {
           // File was deleted
-          console.log(`File deleted: ${file}`);
           return false;
         }
         if (currentMtime !== cachedMtime) {
-          console.log(`File modified: ${file}`);
           return false;
         }
       }
 
       return true;
-    } catch (error) {
-      console.error('Error checking cache validity:', error);
+    } catch {
       return false;
     }
   }
@@ -289,10 +282,7 @@ export class CacheManager {
 
       const cacheFilePath = this.getCacheFilePath(workspaceId);
       await fs.writeFile(cacheFilePath, JSON.stringify(cached, null, 2), 'utf-8');
-
-      console.log(`Cache saved for workspace ${workspaceId} (${index.totalSymbols} symbols)`);
-    } catch (error) {
-      console.error('Failed to save cache:', error);
+    } catch {
       // Don't throw - caching is optional
     }
   }
@@ -318,11 +308,9 @@ export class CacheManager {
       const cached: CachedIndex = JSON.parse(cacheContent);
 
       const index = this.deserializeIndex(cached.index);
-      console.log(`Cache loaded for workspace ${workspaceId} (${index.totalSymbols} symbols)`);
 
       return index;
-    } catch (error) {
-      console.error('Failed to load cache:', error);
+    } catch {
       return null;
     }
   }
@@ -338,12 +326,8 @@ export class CacheManager {
     try {
       const cacheFilePath = this.getCacheFilePath(workspaceId);
       await fs.unlink(cacheFilePath);
-      console.log(`Cache cleared for workspace ${workspaceId}`);
-    } catch (error) {
+    } catch {
       // Cache file might not exist - that's okay
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-        console.error('Failed to clear cache:', error);
-      }
     }
   }
 
@@ -362,9 +346,8 @@ export class CacheManager {
           await fs.unlink(path.join(this.cacheDir, file));
         }
       }
-      console.log('All caches cleared');
-    } catch (error) {
-      console.error('Failed to clear all caches:', error);
+    } catch {
+      // Silently handle errors
     }
   }
 
@@ -421,8 +404,7 @@ export class CacheManager {
         fileCount,
         isCached: true,
       };
-    } catch (error) {
-      console.error('Failed to get cache stats:', error);
+    } catch {
       return null;
     }
   }
@@ -463,8 +445,7 @@ export class CacheManager {
       }
 
       return stats;
-    } catch (error) {
-      console.error('Failed to get all cache stats:', error);
+    } catch {
       return [];
     }
   }

@@ -224,6 +224,29 @@ describe('TextSearchService', () => {
     });
   });
 
+  describe('Path Filtering', () => {
+    it('should limit results to specified include globs', async () => {
+      const projectDir = path.join(TEST_DIR, 'path-filter');
+      await fs.mkdir(path.join(projectDir, 'nested'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, 'nested', 'match.css'),
+        '.camera { color: rgba(0, 0, 0, 0.5); }'
+      );
+      await fs.writeFile(
+        path.join(projectDir, 'other.css'),
+        '.camera { color: rgb(10, 10, 10); }'
+      );
+
+      const results = await textSearchService.searchText(projectDir, {
+        pattern: 'color',
+        include: ['nested/match.css'],
+      });
+
+      expect(results.length).toBe(1);
+      expect(path.basename(results[0]!.file)).toBe('match.css');
+    });
+  });
+
   describe('Edge Cases', () => {
     it('should handle empty directory', async () => {
       const projectDir = path.join(TEST_DIR, 'empty-dir');

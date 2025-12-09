@@ -11,7 +11,6 @@ async function main() {
   await server.start();
 }
 
-main().catch((error: unknown) => {
-  console.error('Fatal error:', error);
+main().catch(() => {
   process.exit(1);
 });

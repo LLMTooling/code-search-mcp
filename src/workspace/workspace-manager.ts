@@ -46,9 +46,7 @@ export class WorkspaceManager implements IWorkspaceManager {
       await fs.mkdir(this.cacheDir, { recursive: true });
       await this.loadRegistry();
       this.initialized = true;
-      console.log(`Loaded ${this.workspaces.size} persisted workspace(s)`);
-    } catch (error) {
-      console.error('Failed to initialize workspace manager:', error);
+    } catch {
       // Continue without persisted workspaces
       this.initialized = true;
     }
@@ -96,7 +94,6 @@ export class WorkspaceManager implements IWorkspaceManager {
 
       // Validate version
       if (registry.version !== REGISTRY_VERSION) {
-        console.warn(`Registry version mismatch: ${registry.version} !== ${REGISTRY_VERSION}`);
         // Continue anyway - we can handle the data
       }
 
@@ -111,13 +108,8 @@ export class WorkspaceManager implements IWorkspaceManager {
         };
         this.workspaces.set(id, workspace);
       }
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        // Registry file doesn't exist yet - that's okay
-        console.log('No existing workspace registry found - starting fresh');
-      } else {
-        console.error('Failed to load workspace registry:', error);
-      }
+    } catch {
+      // Registry file doesn't exist yet or failed to load - that's okay
     }
   }
 
@@ -144,10 +136,8 @@ export class WorkspaceManager implements IWorkspaceManager {
       }
 
       await fs.writeFile(this.registryFilePath, JSON.stringify(registry, null, 2), 'utf-8');
-      console.log(`Workspace registry saved (${this.workspaces.size} workspace(s))`);
-    } catch (error) {
-      console.error('Failed to save workspace registry:', error);
-      // Don't throw - persistence is optional but we should warn
+    } catch {
+      // Don't throw - persistence is optional
     }
   }
 
@@ -222,8 +212,8 @@ export class WorkspaceManager implements IWorkspaceManager {
     if (workspace) {
       workspace.lastAccessed = new Date();
       // Save asynchronously without blocking
-      this.saveRegistry().catch(error => {
-        console.error('Failed to save registry after updating lastAccessed:', error);
+      this.saveRegistry().catch(() => {
+        // Silently handle errors
       });
     }
   }

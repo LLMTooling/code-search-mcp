@@ -31,15 +31,11 @@ export class SymbolIndexer {
    * Attempts to load from cache first for improved performance.
    */
   async buildIndex(workspaceId: string, workspaceRoot: string, forceRebuild = false): Promise<void> {
-    const startTime = Date.now();
-
     // Try to load from cache if not forcing rebuild
     if (!forceRebuild) {
       const cachedIndex = await this.cacheManager.loadCache(workspaceId, workspaceRoot);
       if (cachedIndex) {
         this.indices.set(workspaceId, cachedIndex);
-        const loadTime = Date.now() - startTime;
-        console.log(`Index loaded from cache in ${loadTime}ms (${cachedIndex.totalSymbols} symbols)`);
         return;
       }
     }
@@ -96,9 +92,6 @@ export class SymbolIndexer {
     }
 
     this.indices.set(workspaceId, index);
-
-    const buildTime = Date.now() - startTime;
-    console.log(`Index built from scratch in ${buildTime}ms (${index.totalSymbols} symbols)`);
 
     // Save to cache
     await this.cacheManager.saveCache(workspaceId, workspaceRoot, index);

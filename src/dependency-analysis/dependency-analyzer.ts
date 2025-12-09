@@ -46,8 +46,8 @@ export class DependencyAnalyzer {
           allDependencies.push(...result.dependencies);
           manifests.push(result.manifest);
         }
-      } catch (error) {
-        console.error(`Failed to parse ${manifestInfo.path}:`, error);
+      } catch {
+        // Silently skip files that fail to parse
       }
     }
 
@@ -138,8 +138,7 @@ export class DependencyAnalyzer {
         default:
           return null;
       }
-    } catch (error) {
-      console.error(`Error parsing ${manifestPath}:`, error);
+    } catch {
       return null;
     }
   }

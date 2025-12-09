@@ -223,9 +223,8 @@ export class ASTSearchService {
         if (options.limit && matches.length >= options.limit) {
           break;
         }
-      } catch (error) {
+      } catch {
         // Skip files that fail to parse
-        console.error(`Failed to parse ${file}:`, error);
       }
     }
 
@@ -307,9 +306,8 @@ export class ASTSearchService {
         if (options.limit && matches.length >= options.limit) {
           break;
         }
-      } catch (error) {
+      } catch {
         // Skip files that fail to parse
-        console.error(`Failed to parse ${file}:`, error);
       }
     }
 
