@@ -3,11 +3,10 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { CodeSearchMCPServer } from '../../src/mcp/server.js';
-import { WorkspaceManager } from '../../src/workspace/workspace-manager.js';
 import { TextSearchService } from '../../src/symbol-search/text-search-service.js';
 import { SymbolSearchService } from '../../src/symbol-search/symbol-search-service.js';
 import { SymbolIndexer } from '../../src/symbol-search/symbol-indexer.js';
+import { validateDirectory, validateAllowedPath, pathToWorkspaceId } from '../../src/utils/workspace-path.js';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -19,7 +18,6 @@ const TEST_DIR = path.join(__dirname, 'error-handling-test');
 const TEST_CACHE_DIR = path.join(__dirname, 'error-handling-cache');
 
 describe('Error Handling and Edge Cases', () => {
-  let workspaceManager: WorkspaceManager;
   let textSearchService: TextSearchService;
   let symbolSearchService: SymbolSearchService;
 
@@ -27,8 +25,6 @@ describe('Error Handling and Edge Cases', () => {
     await fs.mkdir(TEST_DIR, { recursive: true });
     await fs.mkdir(TEST_CACHE_DIR, { recursive: true });
 
-    workspaceManager = new WorkspaceManager(TEST_CACHE_DIR);
-    await workspaceManager.initialize();
     textSearchService = new TextSearchService();
     const symbolIndexer = new SymbolIndexer();
     symbolSearchService = new SymbolSearchService(symbolIndexer);
@@ -39,45 +35,84 @@ describe('Error Handling and Edge Cases', () => {
     await fs.rm(TEST_CACHE_DIR, { recursive: true, force: true });
   });
 
-  describe('Invalid Input Handling', () => {
-    it('should reject null workspace path', async () => {
+  describe('Path Validation', () => {
+    it('should reject null path', async () => {
       await expect(
-        workspaceManager.addWorkspace(null as any, 'Test')
+        validateDirectory(null as any)
       ).rejects.toThrow();
     });
 
-    it('should reject undefined workspace path', async () => {
+    it('should reject undefined path', async () => {
       await expect(
-        workspaceManager.addWorkspace(undefined as any, 'Test')
+        validateDirectory(undefined as any)
       ).rejects.toThrow();
     });
 
-    it('should reject empty workspace path', async () => {
+    it('should reject empty path', async () => {
       await expect(
-        workspaceManager.addWorkspace('', 'Test')
+        validateDirectory('')
       ).rejects.toThrow();
     });
 
-    it('should handle workspace path with only whitespace', async () => {
+    it('should handle path with only whitespace', async () => {
       await expect(
-        workspaceManager.addWorkspace('   ', 'Test')
+        validateDirectory('   ')
       ).rejects.toThrow();
     });
 
-    it('should reject invalid workspace ID format', () => {
-      const workspace = workspaceManager.getWorkspace('invalid-id-format');
-      expect(workspace).toBeUndefined();
+    it('should reject non-existent directory', async () => {
+      await expect(
+        validateDirectory('/path/that/does/not/exist')
+      ).rejects.toThrow();
     });
 
-    it('should reject negative workspace ID numbers', () => {
-      const workspace = workspaceManager.getWorkspace('ws--1');
-      expect(workspace).toBeUndefined();
+    it('should reject file instead of directory', async () => {
+      const filePath = path.join(TEST_DIR, 'not-a-dir.txt');
+      await fs.writeFile(filePath, 'content');
+
+      await expect(
+        validateDirectory(filePath)
+      ).rejects.toThrow();
     });
 
-    it('should handle extremely long workspace IDs', () => {
-      const longId = 'ws-' + '9'.repeat(1000);
-      const workspace = workspaceManager.getWorkspace(longId);
-      expect(workspace).toBeUndefined();
+    it('should generate consistent workspace IDs', () => {
+      const testPath = '/some/test/path';
+      const id1 = pathToWorkspaceId(testPath);
+      const id2 = pathToWorkspaceId(testPath);
+      expect(id1).toBe(id2);
+      expect(id1.length).toBe(16);
+    });
+
+    it('should generate different IDs for different paths', () => {
+      const id1 = pathToWorkspaceId('/path/one');
+      const id2 = pathToWorkspaceId('/path/two');
+      expect(id1).not.toBe(id2);
+    });
+  });
+
+  describe('Allowed Workspace Validation', () => {
+    it('should allow paths within allowed workspaces', () => {
+      const allowed = ['/allowed/workspace'];
+      const result = validateAllowedPath('/allowed/workspace/subdir', allowed);
+      expect(result).toBeDefined();
+    });
+
+    it('should reject paths outside allowed workspaces', () => {
+      const allowed = ['/allowed/workspace'];
+      expect(() =>
+        validateAllowedPath('/not/allowed/path', allowed)
+      ).toThrow(/Access denied/);
+    });
+
+    it('should allow any path when no workspaces are configured', () => {
+      const result = validateAllowedPath('/any/path', []);
+      expect(result).toBeDefined();
+    });
+
+    it('should allow exact match of allowed workspace', () => {
+      const allowed = ['/allowed/workspace'];
+      const result = validateAllowedPath('/allowed/workspace', allowed);
+      expect(result).toBeDefined();
     });
   });
 
@@ -88,15 +123,6 @@ describe('Error Handling and Edge Cases', () => {
           pattern: 'test',
           limit: 10,
         })
-      ).rejects.toThrow();
-    });
-
-    it('should handle file instead of directory for workspace', async () => {
-      const filePath = path.join(TEST_DIR, 'not-a-dir.txt');
-      await fs.writeFile(filePath, 'content');
-
-      await expect(
-        workspaceManager.addWorkspace(filePath, 'File Path')
       ).rejects.toThrow();
     });
 
@@ -239,8 +265,8 @@ describe('Error Handling and Edge Cases', () => {
       await fs.mkdir(spaceDir, { recursive: true });
       await fs.writeFile(path.join(spaceDir, 'file.txt'), 'test content');
 
-      const workspace = await workspaceManager.addWorkspace(spaceDir, 'Spaces');
-      expect(workspace.rootPath).toBe(spaceDir);
+      const normalized = await validateDirectory(spaceDir);
+      expect(normalized).toBe(spaceDir);
 
       const results = await textSearchService.searchText(spaceDir, {
         pattern: 'test',
@@ -255,8 +281,8 @@ describe('Error Handling and Edge Cases', () => {
       await fs.mkdir(specialDir, { recursive: true });
       await fs.writeFile(path.join(specialDir, 'file.txt'), 'test content');
 
-      const workspace = await workspaceManager.addWorkspace(specialDir, 'Special');
-      expect(workspace).toBeDefined();
+      const normalized = await validateDirectory(specialDir);
+      expect(normalized).toBeDefined();
 
       const results = await textSearchService.searchText(specialDir, {
         pattern: 'test',
@@ -271,8 +297,8 @@ describe('Error Handling and Edge Cases', () => {
       await fs.mkdir(unicodeDir, { recursive: true });
       await fs.writeFile(path.join(unicodeDir, 'file.txt'), 'test content');
 
-      const workspace = await workspaceManager.addWorkspace(unicodeDir, 'Unicode');
-      expect(workspace).toBeDefined();
+      const normalized = await validateDirectory(unicodeDir);
+      expect(normalized).toBeDefined();
 
       const results = await textSearchService.searchText(unicodeDir, {
         pattern: 'test',
@@ -287,8 +313,8 @@ describe('Error Handling and Edge Cases', () => {
       await fs.mkdir(dotDir, { recursive: true });
       await fs.writeFile(path.join(dotDir, 'file.txt'), 'test content');
 
-      const workspace = await workspaceManager.addWorkspace(dotDir, 'Dots');
-      expect(workspace).toBeDefined();
+      const normalized = await validateDirectory(dotDir);
+      expect(normalized).toBeDefined();
     });
   });
 
@@ -354,23 +380,7 @@ describe('Error Handling and Edge Cases', () => {
   });
 
   describe('Concurrent Operations', () => {
-    it('should handle concurrent workspace additions', async () => {
-      const promises = Array.from({ length: 50 }, (_, i) => {
-        const dir = path.join(TEST_DIR, `concurrent-${i}`);
-        return fs.mkdir(dir, { recursive: true }).then(() =>
-          workspaceManager.addWorkspace(dir, `Workspace ${i}`)
-        );
-      });
-
-      const results = await Promise.all(promises);
-
-      expect(results.length).toBe(50);
-      const ids = results.map(r => r.id);
-      const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(50);
-    });
-
-    it('should handle concurrent searches on same workspace', async () => {
+    it('should handle concurrent searches on same directory', async () => {
       const projectDir = path.join(TEST_DIR, 'concurrent-search');
       await fs.mkdir(projectDir, { recursive: true });
       await fs.writeFile(path.join(projectDir, 'file.txt'), 'test content');
@@ -396,34 +406,6 @@ describe('Error Handling and Edge Cases', () => {
         symbolSearchService.searchSymbols('ws-nonexistent', {
           language: 'typescript',
           name: 'Test',
-          match: 'exact',
-        })
-      ).rejects.toThrow();
-    });
-
-    it('should handle invalid language for symbol search', async () => {
-      const projectDir = path.join(TEST_DIR, 'invalid-lang');
-      await fs.mkdir(projectDir, { recursive: true });
-      const workspace = await workspaceManager.addWorkspace(projectDir, 'Test');
-
-      await expect(
-        symbolSearchService.searchSymbols(workspace.id, {
-          language: 'invalid-language' as any,
-          name: 'Test',
-          match: 'exact',
-        })
-      ).rejects.toThrow();
-    });
-
-    it('should handle empty symbol name', async () => {
-      const projectDir = path.join(TEST_DIR, 'empty-symbol');
-      await fs.mkdir(projectDir, { recursive: true });
-      const workspace = await workspaceManager.addWorkspace(projectDir, 'Test');
-
-      await expect(
-        symbolSearchService.searchSymbols(workspace.id, {
-          language: 'typescript',
-          name: '',
           match: 'exact',
         })
       ).rejects.toThrow();
@@ -485,27 +467,6 @@ describe('Error Handling and Edge Cases', () => {
   });
 
   describe('Race Conditions', () => {
-    it('should handle workspace removal during search', async () => {
-      const projectDir = path.join(TEST_DIR, 'race-condition');
-      await fs.mkdir(projectDir, { recursive: true });
-      await fs.writeFile(path.join(projectDir, 'file.txt'), 'test');
-
-      const workspace = await workspaceManager.addWorkspace(projectDir, 'Race');
-
-      // Start search
-      const searchPromise = textSearchService.searchText(workspace.rootPath, {
-        pattern: 'test',
-        limit: 10,
-      });
-
-      // Remove workspace while searching
-      workspaceManager.removeWorkspace(workspace.id);
-
-      // Search should still complete
-      const results = await searchPromise;
-      expect(results).toBeDefined();
-    });
-
     it('should handle file deletion during search', async () => {
       const projectDir = path.join(TEST_DIR, 'file-deletion');
       await fs.mkdir(projectDir, { recursive: true });

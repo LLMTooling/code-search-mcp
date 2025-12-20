@@ -13,7 +13,9 @@
       "Bash(node -e:*)",
       "mcp__code-search-mcp__search_ast_pattern",
       "mcp__code-search-mcp__search_ast_rule",
-      "Bash(npm test:*)"
+      "Bash(npm test:*)",
+      "Skill(readme-generator)",
+      "Skill(repo-sweep)"
     ],
     "deny": [],
     "ask": []

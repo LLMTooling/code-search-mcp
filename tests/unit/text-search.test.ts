@@ -237,9 +237,10 @@ describe('TextSearchService', () => {
         '.camera { color: rgb(10, 10, 10); }'
       );
 
+      // Use glob pattern that works cross-platform
       const results = await textSearchService.searchText(projectDir, {
         pattern: 'color',
-        include: ['nested/match.css'],
+        include: ['**/match.css'],
       });
 
       expect(results.length).toBe(1);

@@ -7,7 +7,6 @@ import { simpleGit } from 'simple-git';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { WorkspaceManager } from '../../src/workspace/workspace-manager.js';
 import { StackDetectionEngine } from '../../src/stack-detection/detection-engine.js';
 import { SymbolIndexer } from '../../src/symbol-search/symbol-indexer.js';
 import { SymbolSearchService } from '../../src/symbol-search/symbol-search-service.js';
@@ -15,6 +14,7 @@ import { TextSearchService } from '../../src/symbol-search/text-search-service.j
 import { FileSearchService } from '../../src/file-search/file-search-service.js';
 import { DependencyAnalyzer } from '../../src/dependency-analysis/dependency-analyzer.js';
 import { isCTagsAvailable } from '../../src/symbol-search/ctags-integration.js';
+import { pathToWorkspaceId } from '../../src/utils/workspace-path.js';
 import type { StackRegistry } from '../../src/types/index.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -59,7 +59,6 @@ const TEST_REPOSITORIES = {
 };
 
 describe('MCP Server Integration Tests', () => {
-  let workspaceManager: WorkspaceManager;
   let stackRegistry: StackRegistry;
   let detectionEngine: StackDetectionEngine;
   let symbolIndexer: SymbolIndexer;
@@ -70,7 +69,7 @@ describe('MCP Server Integration Tests', () => {
   let ctagsAvailable: boolean;
 
   const clonedRepos: Map<string, string> = new Map();
-  // Reusable workspaces to enable caching
+  // Workspaces with paths and generated IDs
   const workspaces: Map<string, { id: string; path: string }> = new Map();
 
   beforeAll(async () => {
@@ -115,8 +114,6 @@ describe('MCP Server Integration Tests', () => {
 
     // Initialize services
     await fs.mkdir(TEST_CACHE_DIR, { recursive: true });
-    workspaceManager = new WorkspaceManager(TEST_CACHE_DIR);
-    await workspaceManager.initialize();
     detectionEngine = new StackDetectionEngine(stackRegistry);
     symbolIndexer = new SymbolIndexer();
     symbolSearchService = new SymbolSearchService(symbolIndexer);
@@ -124,16 +121,16 @@ describe('MCP Server Integration Tests', () => {
     fileSearchService = new FileSearchService();
     dependencyAnalyzer = new DependencyAnalyzer();
 
-    // Pre-create workspaces and build symbol indices to enable caching
+    // Set up workspaces with generated IDs (no WorkspaceManager needed)
     console.log('Setting up workspaces and building symbol indices...');
     for (const [name, repoPath] of clonedRepos.entries()) {
-      const workspace = await workspaceManager.addWorkspace(repoPath, name);
-      workspaces.set(name, { id: workspace.id, path: repoPath });
+      const workspaceId = pathToWorkspaceId(repoPath);
+      workspaces.set(name, { id: workspaceId, path: repoPath });
 
       // Pre-build symbol index if ctags is available
       if (ctagsAvailable) {
         console.log(`Building symbol index for ${name}...`);
-        await symbolSearchService.refreshIndex(workspace.id, repoPath);
+        await symbolSearchService.refreshIndex(workspaceId, repoPath);
       }
     }
     console.log('Setup complete!');
@@ -156,28 +153,27 @@ describe('MCP Server Integration Tests', () => {
     }
   });
 
-  describe('Workspace Management', () => {
-    it('should have created workspaces successfully', async () => {
+  describe('Workspace Path Validation', () => {
+    it('should generate consistent workspace IDs from paths', async () => {
       const workspace = workspaces.get('typescript');
       expect(workspace).toBeDefined();
-      expect(workspace?.id).toBe('typescript');
+      expect(workspace?.id).toBeDefined();
+      expect(workspace?.id.length).toBe(16); // SHA256 truncated to 16 chars
 
-      const retrieved = workspaceManager.getWorkspace(workspace!.id);
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.rootPath).toBe(workspace?.path);
+      // Same path should generate same ID
+      const id2 = pathToWorkspaceId(workspace!.path);
+      expect(id2).toBe(workspace?.id);
     });
 
-    it('should list all workspaces', async () => {
-      const allWorkspaces = workspaceManager.listWorkspaces();
-      expect(allWorkspaces.length).toBe(Object.keys(TEST_REPOSITORIES).length);
-    });
+    it('should have workspaces for all repositories', async () => {
+      expect(workspaces.size).toBe(Object.keys(TEST_REPOSITORIES).length);
 
-    it('should retrieve workspace by ID', async () => {
-      const workspace = workspaces.get('flask');
-      const retrieved = workspaceManager.getWorkspace(workspace!.id);
-
-      expect(retrieved).toBeDefined();
-      expect(retrieved?.id).toBe('flask');
+      for (const name of Object.keys(TEST_REPOSITORIES)) {
+        const workspace = workspaces.get(name);
+        expect(workspace).toBeDefined();
+        expect(workspace?.path).toBeDefined();
+        expect(workspace?.id).toBeDefined();
+      }
     });
   });
 
@@ -381,13 +377,12 @@ describe('MCP Server Integration Tests', () => {
   });
 
   describe('End-to-End Workflow', () => {
-    it('should perform complete workflow: workspace access, detect stacks, search symbols, search text', async () => {
+    it('should perform complete workflow: detect stacks, search symbols, search text', async () => {
       const workspace = workspaces.get('typescript')!;
 
       // Step 1: Verify workspace exists
       expect(workspace.id).toBeDefined();
-      const retrieved = workspaceManager.getWorkspace(workspace.id);
-      expect(retrieved).toBeDefined();
+      expect(workspace.path).toBeDefined();
 
       // Step 2: Detect stacks
       const stackResult = await detectionEngine.detectStacks(

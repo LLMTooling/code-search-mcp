@@ -173,64 +173,54 @@ The server exposes the following tools through the Model Context Protocol interf
     <th>Key Parameters</th>
   </tr>
   <tr>
-    <td><code>add_workspace</code></td>
-    <td>Register a workspace directory for searching</td>
-    <td>path, name (optional)</td>
-  </tr>
-  <tr>
-    <td><code>list_workspaces</code></td>
-    <td>List all registered workspaces</td>
-    <td>None</td>
-  </tr>
-  <tr>
     <td><code>search_symbols</code></td>
     <td>Search for code symbols with filters</td>
-    <td>workspace_id, language, name, match, kinds, scope</td>
+    <td>path, language, name, match, kinds, scope</td>
   </tr>
   <tr>
     <td><code>search_text</code></td>
     <td>Search code using regex patterns</td>
-    <td>workspace_id, pattern, language, case_insensitive, literal, limit, paths</td>
+    <td>path, pattern, language, case_insensitive, literal, limit, paths</td>
   </tr>
   <tr>
     <td><code>search_files</code></td>
     <td>Find files by name, pattern, or extension</td>
-    <td>workspace_id, pattern, name, extension, directory</td>
+    <td>path, pattern, name, extension, directory</td>
   </tr>
   <tr>
     <td><code>detect_stacks</code></td>
-    <td>Detect technology stacks in a workspace</td>
-    <td>workspace_id, scan_mode (fast/thorough)</td>
+    <td>Detect technology stacks in a directory</td>
+    <td>path, scan_mode (fast/thorough)</td>
   </tr>
   <tr>
     <td><code>analyze_dependencies</code></td>
     <td>Analyze project dependencies</td>
-    <td>workspace_id, include_transitive, check_outdated</td>
+    <td>path, include_transitive, check_outdated</td>
   </tr>
   <tr>
     <td><code>refresh_index</code></td>
     <td>Rebuild the symbol index</td>
-    <td>workspace_id, force_rebuild</td>
+    <td>path, force_rebuild</td>
   </tr>
   <tr>
     <td><code>cache_stats</code></td>
     <td>View cache statistics</td>
-    <td>workspace_id (optional)</td>
+    <td>path (optional)</td>
   </tr>
   <tr>
     <td><code>clear_cache</code></td>
     <td>Clear cached indices</td>
-    <td>workspace_id (optional)</td>
+    <td>path (optional)</td>
   </tr>
   <tr>
     <td><code>search_ast_pattern</code></td>
     <td>Search using AST patterns with metavariables</td>
-    <td>workspace_id, language, pattern, paths, limit</td>
+    <td>path, language, pattern, paths, limit</td>
   </tr>
   <tr>
     <td><code>search_ast_rule</code></td>
     <td>Search using complex AST rules with relational and composite operators</td>
-    <td>workspace_id, language, rule, paths, limit, debug</td>
+    <td>path, language, rule, paths, limit, debug</td>
   </tr>
   <tr>
     <td><code>check_ast_grep</code></td>
@@ -606,6 +596,14 @@ npm run build
   <h2>Configuration</h2>
 </div>
 
+<div align="center">
+
+**Security Model**
+
+All tools accept absolute `path` parameters and validate them against allowed workspaces configured at startup.
+
+</div>
+
 Add to your MCP settings file (e.g., `claude_desktop_config.json`):
 
 ```json
@@ -614,12 +612,37 @@ Add to your MCP settings file (e.g., `claude_desktop_config.json`):
     "code-search": {
       "command": "node",
       "args": [
-        "/path/to/code-search-mcp/dist/index.js"
+        "/path/to/code-search-mcp/dist/index.js",
+        "--allowed-workspace", "/path/to/your/project1",
+        "--allowed-workspace", "/path/to/your/project2"
       ]
     }
   }
 }
 ```
+
+<div align="center">
+
+**Configuration Options**
+
+</div>
+
+<div align="center">
+<table>
+  <tr>
+    <th>Option</th>
+    <th>Description</th>
+  </tr>
+  <tr>
+    <td><code>--allowed-workspace &lt;path&gt;</code></td>
+    <td>Whitelist a directory for search operations. Can be specified multiple times. If omitted, all paths are allowed (use with caution)</td>
+  </tr>
+  <tr>
+    <td><code>-w &lt;path&gt;</code></td>
+    <td>Short alias for <code>--allowed-workspace</code></td>
+  </tr>
+</table>
+</div>
 
 <div align="center">
   <h2>Development</h2>
@@ -661,11 +684,7 @@ The server is built with a modular architecture for maintainability and extensib
   </tr>
   <tr>
     <td>MCP Server</td>
-    <td>Protocol handling and tool routing</td>
-  </tr>
-  <tr>
-    <td>Workspace Manager</td>
-    <td>Workspace registration and lifecycle</td>
+    <td>Protocol handling, tool routing, and path validation</td>
   </tr>
   <tr>
     <td>Symbol Indexer</td>

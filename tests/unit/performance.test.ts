@@ -4,9 +4,9 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from '@jest/globals';
-import { WorkspaceManager } from '../../src/workspace/workspace-manager.js';
 import { TextSearchService } from '../../src/symbol-search/text-search-service.js';
 import { StackDetectionEngine } from '../../src/stack-detection/detection-engine.js';
+import { pathToWorkspaceId, validateDirectory } from '../../src/utils/workspace-path.js';
 import type { StackRegistry } from '../../src/types/index.js';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -30,7 +30,6 @@ function logPerformance(operation: string, duration: number, target?: number) {
 }
 
 describe('Performance and Stress Tests', () => {
-  let workspaceManager: WorkspaceManager;
   let textSearchService: TextSearchService;
   let detectionEngine: StackDetectionEngine;
 
@@ -38,8 +37,6 @@ describe('Performance and Stress Tests', () => {
     await fs.mkdir(TEST_DIR, { recursive: true });
     await fs.mkdir(TEST_CACHE_DIR, { recursive: true });
 
-    workspaceManager = new WorkspaceManager(TEST_CACHE_DIR);
-    await workspaceManager.initialize();
     textSearchService = new TextSearchService();
 
     // Load stack registry
@@ -54,44 +51,55 @@ describe('Performance and Stress Tests', () => {
     await fs.rm(TEST_CACHE_DIR, { recursive: true, force: true });
   });
 
-  describe('Workspace Manager Performance', () => {
-    it('should handle 1000 workspace additions efficiently', async () => {
+  describe('Workspace Path Performance', () => {
+    it('should generate 10000 workspace IDs efficiently', async () => {
       const start = Date.now();
 
-      const promises = Array.from({ length: 1000 }, async (_, i) => {
-        const dir = path.join(TEST_DIR, `perf-ws-${i}`);
+      for (let i = 0; i < 10000; i++) {
+        pathToWorkspaceId(`/test/path/workspace-${i}`);
+      }
+
+      const duration = Date.now() - start;
+      logPerformance('10000 workspace ID generations', duration, 1000);
+      expect(duration).toBeLessThan(5000);
+    });
+
+    it('should validate 1000 directories efficiently', async () => {
+      // Create directories first
+      const dirs: string[] = [];
+      for (let i = 0; i < 100; i++) {
+        const dir = path.join(TEST_DIR, `perf-validate-${i}`);
         await fs.mkdir(dir, { recursive: true });
-        return workspaceManager.addWorkspace(dir, `Workspace ${i}`);
-      });
+        dirs.push(dir);
+      }
 
-      const workspaces = await Promise.all(promises);
-      const duration = Date.now() - start;
-
-      expect(workspaces.length).toBe(1000);
-      logPerformance('1000 workspace additions', duration, 10000);
-    });
-
-    it('should list 1000 workspaces efficiently', async () => {
       const start = Date.now();
-      const workspaces = workspaceManager.listWorkspaces();
-      const duration = Date.now() - start;
 
-      expect(workspaces.length).toBeGreaterThan(0);
-      logPerformance(`Listing ${workspaces.length} workspaces`, duration, 1000);
+      // Validate each directory 10 times
+      for (const dir of dirs) {
+        for (let j = 0; j < 10; j++) {
+          await validateDirectory(dir);
+        }
+      }
+
+      const duration = Date.now() - start;
+      logPerformance('1000 directory validations', duration, 5000);
     });
 
-    it('should handle 10000 rapid workspace lookups', async () => {
-      const dir = path.join(TEST_DIR, 'lookup-perf');
-      await fs.mkdir(dir, { recursive: true });
-      const workspace = await workspaceManager.addWorkspace(dir, 'Lookup Test');
+    it('should handle 10000 rapid workspace ID lookups', async () => {
+      const testPath = path.join(TEST_DIR, 'lookup-perf');
+      await fs.mkdir(testPath, { recursive: true });
+      const workspaceId = pathToWorkspaceId(testPath);
 
       const start = Date.now();
       for (let i = 0; i < 10000; i++) {
-        workspaceManager.getWorkspace(workspace.id);
+        // Simulate lookup by regenerating ID (consistent with path)
+        const id = pathToWorkspaceId(testPath);
+        expect(id).toBe(workspaceId);
       }
       const duration = Date.now() - start;
 
-      logPerformance('10000 workspace lookups', duration, 1000);
+      logPerformance('10000 workspace ID lookups', duration, 1000);
     });
   });
 
@@ -223,8 +231,9 @@ describe('Performance and Stress Tests', () => {
         );
       }
 
+      const workspaceId = pathToWorkspaceId(projectDir);
       const start = Date.now();
-      const result = await detectionEngine.detectStacks('ws-perf', projectDir, {
+      const result = await detectionEngine.detectStacks(workspaceId, projectDir, {
         scanMode: 'thorough',
       });
       const duration = Date.now() - start;
@@ -241,8 +250,9 @@ describe('Performance and Stress Tests', () => {
         JSON.stringify({ name: 'test' })
       );
 
+      const workspaceId = pathToWorkspaceId(projectDir);
       const start = Date.now();
-      const result = await detectionEngine.detectStacks('ws-fast', projectDir, {
+      const result = await detectionEngine.detectStacks(workspaceId, projectDir, {
         scanMode: 'fast',
       });
       const duration = Date.now() - start;
@@ -462,23 +472,6 @@ describe('Performance and Stress Tests', () => {
 
       // If we get here without crashing, memory is being managed properly
       expect(true).toBe(true);
-    });
-
-    it('should clean up after workspace removal', async () => {
-      const workspacesBefore = workspaceManager.listWorkspaces().length;
-
-      // Add and remove 100 workspaces
-      for (let i = 0; i < 100; i++) {
-        const dir = path.join(TEST_DIR, `cleanup-${i}`);
-        await fs.mkdir(dir, { recursive: true });
-        const ws = await workspaceManager.addWorkspace(dir, `Cleanup ${i}`);
-        workspaceManager.removeWorkspace(ws.id);
-      }
-
-      const workspacesAfter = workspaceManager.listWorkspaces().length;
-
-      // Should be back to original count
-      expect(workspacesAfter).toBe(workspacesBefore);
     });
   });
 });

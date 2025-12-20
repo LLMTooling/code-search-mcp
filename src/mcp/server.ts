@@ -13,7 +13,6 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import type { StackRegistry } from '../types/index.js';
-import { WorkspaceManager } from '../workspace/index.js';
 import { StackDetectionEngine } from '../stack-detection/index.js';
 import { SymbolIndexer } from '../symbol-search/symbol-indexer.js';
 import { SymbolSearchService } from '../symbol-search/symbol-search-service.js';
@@ -24,13 +23,18 @@ import { DependencyAnalyzer } from '../dependency-analysis/index.js';
 import type { DependencyAnalysisOptions } from '../types/dependency-analysis.js';
 import { ASTSearchService } from '../ast-search/index.js';
 import type { ASTRule } from '../types/ast-search.js';
+import { validateWorkspacePath, pathToWorkspaceId } from '../utils/workspace-path.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+export interface CodeSearchMCPServerOptions {
+  allowedWorkspaces?: string[];
+}
+
 export class CodeSearchMCPServer {
   private server: Server;
-  private workspaceManager: WorkspaceManager;
+  private allowedWorkspaces: string[];
   private stackRegistry: StackRegistry | null = null;
   private detectionEngine: StackDetectionEngine | null = null;
   private symbolIndexer: SymbolIndexer;
@@ -40,7 +44,7 @@ export class CodeSearchMCPServer {
   private dependencyAnalyzer: DependencyAnalyzer;
   private astSearchService: ASTSearchService;
 
-  constructor() {
+  constructor(options: CodeSearchMCPServerOptions = {}) {
     this.server = new Server(
       {
         name: 'code-search-mcp',
@@ -53,18 +57,13 @@ export class CodeSearchMCPServer {
       }
     );
 
-    this.workspaceManager = new WorkspaceManager();
+    this.allowedWorkspaces = options.allowedWorkspaces ?? [];
     this.symbolIndexer = new SymbolIndexer();
     this.symbolSearchService = new SymbolSearchService(this.symbolIndexer);
     this.textSearchService = new TextSearchService();
     this.fileSearchService = new FileSearchService();
     this.dependencyAnalyzer = new DependencyAnalyzer();
     this.astSearchService = new ASTSearchService();
-
-    // Initialize workspace manager to load persisted workspaces
-    this.workspaceManager.initialize().catch(() => {
-      // Silently fail - workspace manager will work without persisted state
-    });
 
     // Initialize cache system
     this.symbolIndexer.initialize().catch(() => {
@@ -74,45 +73,27 @@ export class CodeSearchMCPServer {
     this.setupHandlers();
   }
 
+  /**
+   * Validate and resolve a workspace path.
+   * Throws if the path is not allowed or doesn't exist.
+   */
+  private async resolveWorkspace(requestedPath: string): Promise<{ path: string; workspaceId: string }> {
+    return validateWorkspacePath(requestedPath, this.allowedWorkspaces);
+  }
+
   private setupHandlers(): void {
     // List available tools
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       const tools: Tool[] = [
         {
-          name: 'add_workspace',
-          description: 'Add a workspace directory to search',
+          name: 'detect_stacks',
+          description: 'Detect technology stacks in a directory',
           inputSchema: {
             type: 'object',
             properties: {
               path: {
                 type: 'string',
-                description: 'Absolute path to the workspace root directory',
-              },
-              name: {
-                type: 'string',
-                description: 'Optional name for the workspace',
-              },
-            },
-            required: ['path'],
-          },
-        },
-        {
-          name: 'list_workspaces',
-          description: 'List all registered workspaces',
-          inputSchema: {
-            type: 'object',
-            properties: {},
-          },
-        },
-        {
-          name: 'detect_stacks',
-          description: 'Detect technology stacks in a workspace',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              workspace_id: {
-                type: 'string',
-                description: 'ID of the workspace to analyze',
+                description: 'Absolute path to the directory to analyze',
               },
               scan_mode: {
                 type: 'string',
@@ -120,7 +101,7 @@ export class CodeSearchMCPServer {
                 description: 'Scanning thoroughness (default: thorough)',
               },
             },
-            required: ['workspace_id'],
+            required: ['path'],
           },
         },
         {
@@ -129,9 +110,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to search',
+                description: 'Absolute path to the directory to search',
               },
               language: {
                 type: 'string',
@@ -166,7 +147,7 @@ export class CodeSearchMCPServer {
                 description: 'Maximum results to return (default: 100)',
               },
             },
-            required: ['workspace_id', 'language', 'name'],
+            required: ['path', 'language', 'name'],
           },
         },
         {
@@ -175,9 +156,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to search',
+                description: 'Absolute path to the directory to search',
               },
               pattern: {
                 type: 'string',
@@ -206,7 +187,7 @@ export class CodeSearchMCPServer {
                 description: 'Specific file paths or glob patterns to search (relative to the workspace root)',
               },
             },
-            required: ['workspace_id', 'pattern'],
+            required: ['path', 'pattern'],
           },
         },
         {
@@ -215,9 +196,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to search',
+                description: 'Absolute path to the directory to search',
               },
               pattern: {
                 type: 'string',
@@ -244,36 +225,36 @@ export class CodeSearchMCPServer {
                 description: 'Maximum results to return (default: 100)',
               },
             },
-            required: ['workspace_id'],
+            required: ['path'],
           },
         },
         {
           name: 'refresh_index',
-          description: 'Rebuild the symbol index for a workspace',
+          description: 'Rebuild the symbol index for a directory',
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to reindex',
+                description: 'Absolute path to the directory to reindex',
               },
               force_rebuild: {
                 type: 'boolean',
                 description: 'Force rebuild from scratch, ignoring cache (default: false)',
               },
             },
-            required: ['workspace_id'],
+            required: ['path'],
           },
         },
         {
           name: 'cache_stats',
-          description: 'Get cache statistics for workspaces',
+          description: 'Get cache statistics for indexed directories',
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace (optional - if not provided, returns stats for all workspaces)',
+                description: 'Absolute path to the directory (optional - if not provided, returns stats for all cached directories)',
               },
             },
           },
@@ -284,9 +265,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to clear cache for (optional - if not provided, clears all caches)',
+                description: 'Absolute path to the directory to clear cache for (optional - if not provided, clears all caches)',
               },
             },
           },
@@ -297,9 +278,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to analyze',
+                description: 'Absolute path to the directory to analyze',
               },
               include_transitive: {
                 type: 'boolean',
@@ -318,7 +299,7 @@ export class CodeSearchMCPServer {
                 description: 'Maximum depth for transitive dependencies (default: 5)',
               },
             },
-            required: ['workspace_id'],
+            required: ['path'],
           },
         },
         {
@@ -327,9 +308,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to search',
+                description: 'Absolute path to the directory to search',
               },
               language: {
                 type: 'string',
@@ -354,7 +335,7 @@ export class CodeSearchMCPServer {
                 description: 'Maximum number of lines to include in match text (default: 3)',
               },
             },
-            required: ['workspace_id', 'language', 'pattern'],
+            required: ['path', 'language', 'pattern'],
           },
         },
         {
@@ -363,9 +344,9 @@ export class CodeSearchMCPServer {
           inputSchema: {
             type: 'object',
             properties: {
-              workspace_id: {
+              path: {
                 type: 'string',
-                description: 'ID of the workspace to search',
+                description: 'Absolute path to the directory to search',
               },
               language: {
                 type: 'string',
@@ -394,7 +375,7 @@ export class CodeSearchMCPServer {
                 description: 'Enable debug mode to show AST structure (default: false)',
               },
             },
-            required: ['workspace_id', 'language', 'rule'],
+            required: ['path', 'language', 'rule'],
           },
         },
         {
@@ -417,10 +398,6 @@ export class CodeSearchMCPServer {
 
       try {
         switch (name) {
-          case 'add_workspace':
-            return await this.handleAddWorkspace(toolArgs);
-          case 'list_workspaces':
-            return await this.handleListWorkspaces();
           case 'detect_stacks':
             return await this.handleDetectStacks(toolArgs);
           case 'search_symbols':
@@ -459,54 +436,11 @@ export class CodeSearchMCPServer {
     });
   }
 
-  private async handleAddWorkspace(args: Record<string, unknown>) {
-    const path = args.path as string;
-    const name = args.name as string | undefined;
-
-    const workspace = await this.workspaceManager.addWorkspace(path, name);
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify(
-            {
-              workspace_id: workspace.id,
-              name: workspace.name,
-              root_path: workspace.rootPath,
-              message: 'Workspace added successfully',
-            },
-            null,
-            2
-          ),
-        },
-      ],
-    };
-  }
-
-  private async handleListWorkspaces() {
-    const workspaces = this.workspaceManager.listWorkspaces();
-
-    return {
-      content: [
-        {
-          type: 'text',
-          text: JSON.stringify({ workspaces }, null, 2),
-        },
-      ],
-    };
-  }
-
   private async handleDetectStacks(args: Record<string, unknown>) {
     await this.ensureStackRegistry();
 
-    const workspaceId = args.workspace_id as string;
+    const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
     const scanMode = (args.scan_mode as 'fast' | 'thorough') ?? 'thorough';
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
 
     if (!this.detectionEngine) {
       throw new Error('Stack detection engine not initialized');
@@ -514,7 +448,7 @@ export class CodeSearchMCPServer {
 
     const result = await this.detectionEngine.detectStacks(
       workspaceId,
-      workspace.rootPath,
+      workspacePath,
       { scanMode }
     );
 
@@ -529,12 +463,7 @@ export class CodeSearchMCPServer {
   }
 
   private async handleSearchSymbols(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
+    const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
 
     // Ensure index exists
     if (!this.symbolSearchService.hasIndex(workspaceId)) {
@@ -543,7 +472,7 @@ export class CodeSearchMCPServer {
         throw new Error('universal-ctags is not installed. Please install it to use symbol search.');
       }
 
-      await this.symbolSearchService.refreshIndex(workspaceId, workspace.rootPath);
+      await this.symbolSearchService.refreshIndex(workspaceId, workspacePath);
     }
 
     const result = await this.symbolSearchService.searchSymbols(workspaceId, {
@@ -566,20 +495,15 @@ export class CodeSearchMCPServer {
   }
 
   private async handleSearchText(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
+    const { path: workspacePath } = await this.resolveWorkspace(args.path as string);
 
     const rawPaths = args.paths as string[] | string | undefined;
     const includeGlobs = this.normalizeSearchPathFilters(
       Array.isArray(rawPaths) ? rawPaths : rawPaths ? [rawPaths] : undefined,
-      workspace.rootPath
+      workspacePath
     );
 
-    const results = await this.textSearchService.searchText(workspace.rootPath, {
+    const results = await this.textSearchService.searchText(workspacePath, {
       pattern: args.pattern as string,
       language: args.language as never,
       caseInsensitive: args.case_insensitive as boolean | undefined,
@@ -650,14 +574,9 @@ export class CodeSearchMCPServer {
   }
 
   private async handleSearchFiles(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
+    const { path: workspacePath } = await this.resolveWorkspace(args.path as string);
 
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
-
-    const result = await this.fileSearchService.searchFiles(workspace.rootPath, {
+    const result = await this.fileSearchService.searchFiles(workspacePath, {
       pattern: args.pattern as string | undefined,
       name: args.name as string | undefined,
       extension: args.extension as string | undefined,
@@ -677,20 +596,15 @@ export class CodeSearchMCPServer {
   }
 
   private async handleRefreshIndex(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
+    const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
     const forceRebuild = (args.force_rebuild as boolean) ?? false;
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
 
     // Check if ctags is available
     if (!(await isCTagsAvailable())) {
       throw new Error('universal-ctags is not installed. Please install it to use symbol search.');
     }
 
-    await this.symbolSearchService.refreshIndex(workspaceId, workspace.rootPath, forceRebuild);
+    await this.symbolSearchService.refreshIndex(workspaceId, workspacePath, forceRebuild);
 
     const stats = this.symbolSearchService.getIndexStats(workspaceId);
 
@@ -700,7 +614,7 @@ export class CodeSearchMCPServer {
           type: 'text',
           text: JSON.stringify(
             {
-              workspace_id: workspaceId,
+              path: workspacePath,
               total_symbols: stats.totalSymbols,
               last_indexed: stats.lastIndexed,
               message: forceRebuild ? 'Index rebuilt from scratch' : 'Index refreshed successfully',
@@ -714,17 +628,14 @@ export class CodeSearchMCPServer {
   }
 
   private async handleCacheStats(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string | undefined;
+    const requestedPath = args.path as string | undefined;
     const cacheManager = this.symbolIndexer.getCacheManager();
 
-    if (workspaceId) {
-      // Get stats for specific workspace
-      const workspace = this.workspaceManager.getWorkspace(workspaceId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${workspaceId}`);
-      }
+    if (requestedPath) {
+      // Get stats for specific directory
+      const { path: workspacePath, workspaceId } = await this.resolveWorkspace(requestedPath);
 
-      const stats = await cacheManager.getCacheStats(workspaceId, workspace.rootPath);
+      const stats = await cacheManager.getCacheStats(workspaceId, workspacePath);
       if (!stats) {
         return {
           content: [
@@ -732,8 +643,8 @@ export class CodeSearchMCPServer {
               type: 'text',
               text: JSON.stringify(
                 {
-                  workspace_id: workspaceId,
-                  message: 'No cache found for this workspace',
+                  path: workspacePath,
+                  message: 'No cache found for this directory',
                 },
                 null,
                 2
@@ -749,8 +660,7 @@ export class CodeSearchMCPServer {
             type: 'text',
             text: JSON.stringify(
               {
-                workspace_id: stats.workspaceId,
-                workspace_path: stats.workspacePath,
+                path: stats.workspacePath,
                 total_symbols: stats.totalSymbols,
                 last_indexed: stats.lastIndexed,
                 cache_size_bytes: stats.cacheSize,
@@ -765,7 +675,7 @@ export class CodeSearchMCPServer {
         ],
       };
     } else {
-      // Get stats for all workspaces
+      // Get stats for all cached directories
       const allStats = await cacheManager.getAllCacheStats();
 
       return {
@@ -774,10 +684,9 @@ export class CodeSearchMCPServer {
             type: 'text',
             text: JSON.stringify(
               {
-                total_workspaces: allStats.length,
-                workspaces: allStats.map(stats => ({
-                  workspace_id: stats.workspaceId,
-                  workspace_path: stats.workspacePath,
+                total_cached: allStats.length,
+                caches: allStats.map(stats => ({
+                  path: stats.workspacePath,
                   total_symbols: stats.totalSymbols,
                   last_indexed: stats.lastIndexed,
                   cache_size_bytes: stats.cacheSize,
@@ -795,15 +704,13 @@ export class CodeSearchMCPServer {
   }
 
   private async handleClearCache(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string | undefined;
+    const requestedPath = args.path as string | undefined;
     const cacheManager = this.symbolIndexer.getCacheManager();
 
-    if (workspaceId) {
-      // Clear cache for specific workspace
-      const workspace = this.workspaceManager.getWorkspace(workspaceId);
-      if (!workspace) {
-        throw new Error(`Workspace not found: ${workspaceId}`);
-      }
+    if (requestedPath) {
+      // Clear cache for specific directory
+      const { path: workspacePath } = await this.resolveWorkspace(requestedPath);
+      const workspaceId = pathToWorkspaceId(workspacePath);
 
       await cacheManager.clearCache(workspaceId);
 
@@ -813,7 +720,7 @@ export class CodeSearchMCPServer {
             type: 'text',
             text: JSON.stringify(
               {
-                workspace_id: workspaceId,
+                path: workspacePath,
                 message: 'Cache cleared successfully',
               },
               null,
@@ -844,12 +751,7 @@ export class CodeSearchMCPServer {
   }
 
   private async handleAnalyzeDependencies(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
+    const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
 
     const options: DependencyAnalysisOptions = {
       includeTransitive: args.include_transitive as boolean | undefined,
@@ -860,7 +762,7 @@ export class CodeSearchMCPServer {
 
     const result = await this.dependencyAnalyzer.analyzeDependencies(
       workspaceId,
-      workspace.rootPath,
+      workspacePath,
       options
     );
 
@@ -875,20 +777,15 @@ export class CodeSearchMCPServer {
   }
 
   private async handleSearchASTPattern(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
+    const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
 
     // Check if ast-grep is available (should always be true since it's bundled)
     const astGrepInfo = await this.astSearchService.isAvailable();
     if (!astGrepInfo.available) {
-      throw new Error(`ast-grep failed to load: ${astGrepInfo.error}`);
+      throw new Error(`ast-grep failed to load: ${astGrepInfo.error ?? 'unknown error'}`);
     }
 
-    const result = await this.astSearchService.searchPattern(workspaceId, workspace.rootPath, {
+    const result = await this.astSearchService.searchPattern(workspaceId, workspacePath, {
       language: args.language as never,
       pattern: args.pattern as string,
       paths: args.paths as string[] | undefined,
@@ -907,17 +804,12 @@ export class CodeSearchMCPServer {
   }
 
   private async handleSearchASTRule(args: Record<string, unknown>) {
-    const workspaceId = args.workspace_id as string;
-
-    const workspace = this.workspaceManager.getWorkspace(workspaceId);
-    if (!workspace) {
-      throw new Error(`Workspace not found: ${workspaceId}`);
-    }
+    const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
 
     // Check if ast-grep is available (should always be true since it's bundled)
     const astGrepInfo = await this.astSearchService.isAvailable();
     if (!astGrepInfo.available) {
-      throw new Error(`ast-grep failed to load: ${astGrepInfo.error}`);
+      throw new Error(`ast-grep failed to load: ${astGrepInfo.error ?? 'unknown error'}`);
     }
 
     const rule = args.rule as ASTRule;
@@ -928,7 +820,7 @@ export class CodeSearchMCPServer {
       throw new Error(`Invalid AST rule: ${validation.errors.join(', ')}`);
     }
 
-    const result = await this.astSearchService.searchRule(workspaceId, workspace.rootPath, {
+    const result = await this.astSearchService.searchRule(workspaceId, workspacePath, {
       language: args.language as never,
       rule,
       paths: args.paths as string[] | undefined,

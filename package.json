@@ -25,7 +25,7 @@
     "ripgrep",
     "language-server"
   ],
-  "author": "",
+  "author": "GhostTypes",
   "license": "MIT",
   "dependencies": {
     "@ast-grep/lang-bash": "^0.0.4",
