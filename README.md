@@ -4,9 +4,9 @@
 </div>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Node.js-18%2B-green?style=for-the-badge&logo=node.js&logoColor=white">
-  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge">
-  <img src="https://img.shields.io/badge/Platforms-Win%20%7C%20macOS%20%7C%20Linux-blue?style=for-the-badge">
+  <img src="https://img.shields.io/badge/Node.js-18%2B-green?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js 18+">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="License: MIT">
+  <img src="https://img.shields.io/badge/Platforms-Win%20%7C%20macOS%20%7C%20Linux-blue?style=for-the-badge" alt="Platforms: Windows, macOS, Linux">
 </p>
 
 <div align="center">
