@@ -663,7 +663,7 @@ export class ASTSearchService {
   /**
    * Truncate match text to specified number of lines
    */
-  private truncateText(text: string, maxLines: number = 3): { truncated: string; totalLines: number } {
+  private truncateText(text: string, maxLines = 3): { truncated: string; totalLines: number } {
     const lines = text.split('\n');
     const totalLines = lines.length;
 

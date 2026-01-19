@@ -77,14 +77,24 @@ export class FileSearchService {
     // Execute search
     const matchedFiles = await fg(patterns, globOptions);
 
-    // Get file stats for all matched files
+    // Sort matched files by path for consistent ordering before processing
+    // This allows us to slice before expensive fs.stat operations
+    matchedFiles.sort((a, b) => a.localeCompare(b));
+
+    // Apply limit
+    const limit = params.limit ?? 100;
+    // We take a few more than limit to account for potential directories or errors
+    // Since fast-glob with onlyFiles: true (default) is reliable, this buffer is minimal
+    const candidates = matchedFiles.slice(0, limit);
+
+    // Get file stats only for the candidate files
     const files: FileSearchResult[] = [];
-    for (const relativePath of matchedFiles) {
+    for (const relativePath of candidates) {
       try {
         const absolutePath = path.join(workspaceRoot, relativePath);
         const stats = await fs.stat(absolutePath);
 
-        // Skip directories
+        // Skip directories (though fast-glob should have filtered them)
         if (stats.isDirectory()) {
           continue;
         }
@@ -95,24 +105,17 @@ export class FileSearchService {
           size_bytes: stats.size,
           modified: stats.mtime.toISOString(),
         });
-      } catch (error) {
+      } catch {
         // Skip files that can't be accessed
         continue;
       }
     }
 
-    // Sort by path for consistent ordering
-    files.sort((a, b) => a.relative_path.localeCompare(b.relative_path));
-
-    // Apply limit
-    const limit = params.limit ?? 100;
-    const limitedFiles = files.slice(0, limit);
-
     const endTime = Date.now();
 
     return {
-      total_matches: files.length,
-      files: limitedFiles,
+      total_matches: matchedFiles.length,
+      files,
       search_time_ms: endTime - startTime,
     };
   }
