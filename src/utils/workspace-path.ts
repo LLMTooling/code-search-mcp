@@ -53,9 +53,11 @@ export function validateAllowedPath(
 ): string {
   const normalized = path.resolve(requestedPath);
 
-  // If no allowed workspaces are configured, allow all paths
+  // If no allowed workspaces are configured, deny all access
   if (allowedWorkspaces.length === 0) {
-    return normalized;
+    throw new Error(
+      `Access denied: No allowed workspaces configured. Access to ${normalized} is denied.`
+    );
   }
 
   const isAllowed = allowedWorkspaces.some(allowed => {
