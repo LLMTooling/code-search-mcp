@@ -37,6 +37,15 @@ function parseArgs(args: string[]): { allowedWorkspaces: string[] } {
 
 async function main() {
   const { allowedWorkspaces } = parseArgs(process.argv.slice(2));
+
+  // If no allowed workspaces are specified, default to the current working directory
+  if (allowedWorkspaces.length === 0) {
+    const cwd = process.cwd();
+    console.error(`⚠️ No allowed workspaces specified. Defaulting to current working directory: ${cwd}`);
+    console.error('To allow other directories, use --allowed-workspace <path>');
+    allowedWorkspaces.push(cwd);
+  }
+
   const server = new CodeSearchMCPServer({ allowedWorkspaces });
   await server.start();
 }

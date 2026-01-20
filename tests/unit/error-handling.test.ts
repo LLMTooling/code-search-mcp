@@ -104,9 +104,10 @@ describe('Error Handling and Edge Cases', () => {
       ).toThrow(/Access denied/);
     });
 
-    it('should allow any path when no workspaces are configured', () => {
-      const result = validateAllowedPath('/any/path', []);
-      expect(result).toBeDefined();
+    it('should deny any path when no workspaces are configured', () => {
+      expect(() =>
+        validateAllowedPath('/any/path', [])
+      ).toThrow(/Access denied/);
     });
 
     it('should allow exact match of allowed workspace', () => {
