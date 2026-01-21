@@ -1,0 +1,6 @@
+# Biome Migration Progress Log
+
+This file tracks completed tasks during the Ralph loop migration.
+
+---
+
