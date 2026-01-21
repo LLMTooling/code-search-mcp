@@ -10,6 +10,7 @@ import type {
 } from '../types/index.js';
 import { SymbolIndexer } from './symbol-indexer.js';
 import { getDefaultKinds } from './language-profiles.js';
+import { safeRegex } from '../utils/security.js';
 
 export class SymbolSearchService {
   constructor(private indexer: SymbolIndexer) {}
@@ -86,13 +87,13 @@ export class SymbolSearchService {
       case 'substring':
         return symbolName.toLowerCase().includes(searchTerm.toLowerCase());
       case 'regex': {
-        try {
-          const regex = new RegExp(searchTerm);
+        // Use safeRegex to prevent ReDoS attacks
+        const regex = safeRegex(searchTerm);
+        if (regex) {
           return regex.test(symbolName);
-        } catch {
-          // Invalid regex, treat as literal substring
-          return symbolName.toLowerCase().includes(searchTerm.toLowerCase());
         }
+        // Invalid or unsafe regex, treat as literal substring
+        return symbolName.toLowerCase().includes(searchTerm.toLowerCase());
       }
       default: {
         const _exhaustive: never = mode;

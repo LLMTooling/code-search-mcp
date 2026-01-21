@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import { rgPath } from '@vscode/ripgrep';
 import type { SupportedLanguage } from '../types/index.js';
 import { getLanguageGlobs } from './language-profiles.js';
+import { PROCESS_TIMEOUT } from '../utils/security.js';
 
 const execFileAsync = promisify(execFile);
 
@@ -111,6 +112,7 @@ export class TextSearchService {
     try {
       const { stdout } = await execFileAsync(rgPath, args, {
         maxBuffer: 50 * 1024 * 1024, // 50MB buffer
+        timeout: PROCESS_TIMEOUT, // Prevent hangs (30 seconds)
       });
 
       return this.parseRipgrepJsonOutput(stdout);

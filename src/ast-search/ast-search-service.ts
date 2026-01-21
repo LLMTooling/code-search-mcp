@@ -22,6 +22,11 @@ import langYaml = require('@ast-grep/lang-yaml');
 import { promises as fs } from 'fs';
 import path from 'path';
 import fastGlob from 'fast-glob';
+import {
+  safeRegex,
+  MAX_AST_FILE_SIZE,
+  MAX_AST_RECURSION_DEPTH,
+} from '../utils/security.js';
 import type {
   ASTPatternSearchOptions,
   ASTRuleSearchOptions,
@@ -155,6 +160,28 @@ export class ASTSearchService {
   }
 
   /**
+   * Read file with size limit to prevent memory exhaustion.
+   * Throws if file exceeds maximum size.
+   */
+  private async readFileWithSizeLimit(filePath: string): Promise<string> {
+    const stats = await fs.stat(filePath);
+    if (stats.size > MAX_AST_FILE_SIZE) {
+      throw new Error(
+        `File ${path.basename(filePath)} exceeds size limit (${Math.round(stats.size / 1024 / 1024)}MB > ${Math.round(MAX_AST_FILE_SIZE / 1024 / 1024)}MB)`
+      );
+    }
+    return fs.readFile(filePath, 'utf-8');
+  }
+
+  /**
+   * Validate regex pattern for security (prevent ReDoS).
+   * Returns null if pattern is unsafe.
+   */
+  private validatePattern(pattern: string): RegExp | null {
+    return safeRegex(pattern);
+  }
+
+  /**
    * Search using a simple pattern
    */
   async searchPattern(
@@ -184,14 +211,19 @@ export class ASTSearchService {
     // Search each file
     for (const file of files) {
       try {
-        const content = await fs.readFile(file, 'utf-8');
+        const content = await this.readFileWithSizeLimit(file);
         const ast = parse(astLang, content);
         const root = ast.root();
 
-        // Find all matches
+        // Find all matches with iteration limit
         const nodes = root.findAll(options.pattern);
-
+        let matchCount = 0;
         for (const node of nodes) {
+          if (matchCount >= MAX_AST_RECURSION_DEPTH) {
+            break;
+          }
+          matchCount++;
+
           const range = node.range();
           const fullText = node.text();
           const { truncated, totalLines } = this.truncateText(fullText, options.maxLines ?? 3);
@@ -267,14 +299,19 @@ export class ASTSearchService {
     // Search each file
     for (const file of files) {
       try {
-        const content = await fs.readFile(file, 'utf-8');
+        const content = await this.readFileWithSizeLimit(file);
         const ast = parse(astLang, content);
         const root = ast.root();
 
-        // Apply rule
+        // Apply rule with iteration limit
         const nodes = this.applyRule(root, options.rule);
-
+        let matchCount = 0;
         for (const node of nodes) {
+          if (matchCount >= MAX_AST_RECURSION_DEPTH) {
+            break;
+          }
+          matchCount++;
+
           const range = node.range();
           const fullText = node.text();
           const { truncated, totalLines } = this.truncateText(fullText, options.maxLines ?? 3);

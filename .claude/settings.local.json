@@ -15,7 +15,10 @@
       "mcp__code-search-mcp__search_ast_rule",
       "Bash(npm test:*)",
       "Skill(readme-generator)",
-      "Skill(repo-sweep)"
+      "Skill(repo-sweep)",
+      "Bash(gh pr view:*)",
+      "Bash(gh pr diff:*)",
+      "Bash(npx jest:*)"
     ],
     "deny": [],
     "ask": []

@@ -5,6 +5,7 @@
 import { createHash } from 'crypto';
 import path from 'path';
 import { promises as fs } from 'fs';
+import { isWindowsUncExtendedPath, sanitizeErrorMessage } from './security.js';
 
 /**
  * Generate a deterministic workspace ID from an absolute path.
@@ -30,11 +31,11 @@ export async function validateDirectory(dirPath: string): Promise<string> {
   try {
     const stat = await fs.stat(normalized);
     if (!stat.isDirectory()) {
-      throw new Error(`Path is not a directory: ${normalized}`);
+      throw new Error('Path is not a directory');
     }
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      throw new Error(`Directory does not exist: ${normalized}`);
+      throw new Error('Directory does not exist');
     }
     throw error;
   }
@@ -51,12 +52,26 @@ export function validateAllowedPath(
   requestedPath: string,
   allowedWorkspaces: string[]
 ): string {
+  // Block Windows UNC extended-length paths that can bypass path validation
+  if (isWindowsUncExtendedPath(requestedPath)) {
+    throw new Error(
+      'Access denied: UNC extended-length paths are not allowed for security reasons'
+    );
+  }
+
   const normalized = path.resolve(requestedPath);
+
+  // Also check normalized path in case it was transformed to UNC format
+  if (isWindowsUncExtendedPath(normalized)) {
+    throw new Error(
+      'Access denied: UNC extended-length paths are not allowed for security reasons'
+    );
+  }
 
   // If no allowed workspaces are configured, deny all access
   if (allowedWorkspaces.length === 0) {
     throw new Error(
-      `Access denied: No allowed workspaces configured. Access to ${normalized} is denied.`
+      `Access denied: No allowed workspaces configured.`
     );
   }
 
@@ -70,9 +85,9 @@ export function validateAllowedPath(
   });
 
   if (!isAllowed) {
+    // Don't leak actual paths in error messages
     throw new Error(
-      `Access denied: ${normalized} is not within allowed workspaces. ` +
-      `Allowed paths: ${allowedWorkspaces.join(', ')}`
+      'Access denied: Requested path is not within allowed workspaces.'
     );
   }
 

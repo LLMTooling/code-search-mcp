@@ -6,19 +6,58 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import { promises as fs } from 'fs';
 import path from 'path';
+import os from 'os';
+import { createHash } from 'crypto';
 import { ctagsPath } from '@LLMTooling/universal-ctags-node';
 import type { CTagsTag, SupportedLanguage } from '../types/index.js';
+import { PROCESS_TIMEOUT } from '../utils/security.js';
 
 const execFileAsync = promisify(execFile);
 
 /**
+ * Generate a unique temp filename for ctags output.
+ * Uses a hash of the workspace path to ensure consistency.
+ */
+function getTagsFilePath(workspaceRoot: string): string {
+  const hash = createHash('sha256').update(workspaceRoot).digest('hex').substring(0, 16);
+  return path.join(os.tmpdir(), `code-search-tags-${hash}.tmp`);
+}
+
+/**
+ * Check if a file exists and is a symlink.
+ * Returns true if the path is a symlink.
+ */
+async function isSymlink(filePath: string): Promise<boolean> {
+  try {
+    const stats = await fs.lstat(filePath);
+    return stats.isSymbolicLink();
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Run universal-ctags on a workspace directory.
+ * Uses a secure temporary file to prevent symlink attacks.
  */
 export async function runCTags(workspaceRoot: string): Promise<CTagsTag[]> {
-  // Create a temporary tags file path
-  const tagsFile = path.join(workspaceRoot, '.code-search-tags');
+  // Use system temp directory instead of workspace root to prevent symlink attacks
+  const tagsFile = getTagsFilePath(workspaceRoot);
 
   try {
+    // Ensure the tags file doesn't exist or is not a symlink (TOCTOU protection)
+    try {
+      const existingIsSymlink = await isSymlink(tagsFile);
+      if (existingIsSymlink) {
+        throw new Error('Security: Refusing to overwrite symlink at tags file location');
+      }
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+        throw error;
+      }
+      // File doesn't exist, which is fine
+    }
+
     // Run ctags with appropriate options
     const args = [
       '--languages=Java,Python,JavaScript,TypeScript,C#,Go,Rust,C,C++,PHP,Ruby,Kotlin',
@@ -34,6 +73,7 @@ export async function runCTags(workspaceRoot: string): Promise<CTagsTag[]> {
     await execFileAsync(ctagsPath, args, {
       cwd: workspaceRoot,
       maxBuffer: 50 * 1024 * 1024, // 50MB buffer for large projects
+      timeout: PROCESS_TIMEOUT, // Add timeout to prevent hangs
     });
 
     // Read and parse the tags file
