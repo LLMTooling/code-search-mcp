@@ -3,22 +3,22 @@
  * Uses bundled native binaries and language packages - no external installation required
  */
 
-import { parse, Lang, registerDynamicLanguage } from '@ast-grep/napi';
-import langBash = require('@ast-grep/lang-bash');
-import langC = require('@ast-grep/lang-c');
-import langCpp = require('@ast-grep/lang-cpp');
-import langCsharp = require('@ast-grep/lang-csharp');
-import langGo = require('@ast-grep/lang-go');
-import langJava = require('@ast-grep/lang-java');
-import langJson = require('@ast-grep/lang-json');
-import langKotlin = require('@ast-grep/lang-kotlin');
-import langPython = require('@ast-grep/lang-python');
-import langRust = require('@ast-grep/lang-rust');
-import langScala = require('@ast-grep/lang-scala');
-import langSwift = require('@ast-grep/lang-swift');
-import langTsx = require('@ast-grep/lang-tsx');
-import langTypeScript = require('@ast-grep/lang-typescript');
-import langYaml = require('@ast-grep/lang-yaml');
+import { parse, Lang, SgNode, registerDynamicLanguage } from '@ast-grep/napi';
+import langBash from '@ast-grep/lang-bash';
+import langC from '@ast-grep/lang-c';
+import langCpp from '@ast-grep/lang-cpp';
+import langCsharp from '@ast-grep/lang-csharp';
+import langGo from '@ast-grep/lang-go';
+import langJava from '@ast-grep/lang-java';
+import langJson from '@ast-grep/lang-json';
+import langKotlin from '@ast-grep/lang-kotlin';
+import langPython from '@ast-grep/lang-python';
+import langRust from '@ast-grep/lang-rust';
+import langScala from '@ast-grep/lang-scala';
+import langSwift from '@ast-grep/lang-swift';
+import langTsx from '@ast-grep/lang-tsx';
+import langTypeScript from '@ast-grep/lang-typescript';
+import langYaml from '@ast-grep/lang-yaml';
 import { promises as fs } from 'fs';
 import path from 'path';
 import fastGlob from 'fast-glob';
@@ -39,28 +39,40 @@ import type {
 // Type for ast-grep language (built-in or custom string)
 type NapiLang = Lang | string;
 
+// Interface for a dynamic language package (has libraryPath property required by ast-grep)
+interface DynamicLanguagePackage {
+  libraryPath: string;
+  extensions: readonly string[];
+  languageSymbol: string;
+  expandoChar: string;
+}
+
+// Type for dynamic language configuration expected by registerDynamicLanguage
+type DynamicLanguageConfig = Record<string, DynamicLanguagePackage>;
+
 // Register dynamic languages once
 let languagesRegistered = false;
 
 function ensureLanguagesRegistered() {
   if (!languagesRegistered) {
-    registerDynamicLanguage({
-      bash: langBash as any,
-      c: langC as any,
-      cpp: langCpp as any,
-      csharp: langCsharp as any,
-      go: langGo as any,
-      java: langJava as any,
-      json: langJson as any,
-      kotlin: langKotlin as any,
-      python: langPython as any,
-      rust: langRust as any,
-      scala: langScala as any,
-      swift: langSwift as any,
-      tsx: langTsx as any,
-      typescript: langTypeScript as any,
-      yaml: langYaml as any,
-    });
+    const config = {
+      bash: langBash,
+      c: langC,
+      cpp: langCpp,
+      csharp: langCsharp,
+      go: langGo,
+      java: langJava,
+      json: langJson,
+      kotlin: langKotlin,
+      python: langPython,
+      rust: langRust,
+      scala: langScala,
+      swift: langSwift,
+      tsx: langTsx,
+      typescript: langTypeScript,
+      yaml: langYaml,
+    };
+    registerDynamicLanguage(config as DynamicLanguageConfig);
     languagesRegistered = true;
   }
 }
@@ -130,26 +142,24 @@ export class ASTSearchService {
   /**
    * Check if ast-grep is available (always true since it's bundled)
    */
-  async isAvailable(): Promise<ASTGrepInfo> {
+  isAvailable(): ASTGrepInfo {
     try {
       // Ensure dynamic languages are registered
       ensureLanguagesRegistered();
 
       // Try to access the Lang enum and language packages to verify modules load
-      const testBuiltIn = Lang.JavaScript;
-      const testPython = langPython;
-      const testGo = langGo;
-      const testJava = langJava;
+      // We just need to access them - if they're not loaded, this will throw
+      void Lang.JavaScript;
+      void langPython;
+      void langGo;
+      void langJava;
 
-      if (testBuiltIn !== undefined && testPython !== undefined && testGo !== undefined && testJava !== undefined) {
-        const supportedLangs = Object.keys(LANGUAGE_MAP).sort().join(', ');
-        return {
-          available: true,
-          version: '0.40.0', // @ast-grep packages version
-          path: `bundled (15 languages: ${supportedLangs})`,
-        };
-      }
-      throw new Error('Failed to load ast-grep modules');
+      const supportedLangs = Object.keys(LANGUAGE_MAP).sort().join(', ');
+      return {
+        available: true,
+        version: '0.40.0', // @ast-grep packages version
+        path: `bundled (15 languages: ${supportedLangs})`,
+      };
     } catch (error) {
       return {
         available: false,
@@ -165,8 +175,10 @@ export class ASTSearchService {
   private async readFileWithSizeLimit(filePath: string): Promise<string> {
     const stats = await fs.stat(filePath);
     if (stats.size > MAX_AST_FILE_SIZE) {
+      const sizeMB = String(Math.round(stats.size / 1024 / 1024));
+      const limitMB = String(Math.round(MAX_AST_FILE_SIZE / 1024 / 1024));
       throw new Error(
-        `File ${path.basename(filePath)} exceeds size limit (${Math.round(stats.size / 1024 / 1024)}MB > ${Math.round(MAX_AST_FILE_SIZE / 1024 / 1024)}MB)`
+        `File ${path.basename(filePath)} exceeds size limit (${sizeMB}MB > ${limitMB}MB)`
       );
     }
     return fs.readFile(filePath, 'utf-8');
@@ -351,22 +363,23 @@ export class ASTSearchService {
   /**
    * Apply AST rule to find matching nodes
    */
-  private applyRule(root: any, rule: ASTRule): any[] {
-    let results: any[] = [];
+  private applyRule(root: SgNode, rule: ASTRule): SgNode[] {
+    let results: SgNode[] = [];
 
     // Handle composite rules
     if (rule.all) {
       // AND: Start with first rule, filter with rest
-      results = this.applyRule(root, rule.all[0]);
-      for (let i = 1; i < rule.all.length; i++) {
-        results = results.filter(node => this.nodeMatchesRule(node, rule.all![i]));
+      const allRules = rule.all;
+      results = this.applyRule(root, allRules[0]);
+      for (let i = 1; i < allRules.length; i++) {
+        results = results.filter(node => this.nodeMatchesRule(node, allRules[i]));
       }
       return results;
     }
 
     if (rule.any) {
       // OR: Combine all results
-      const allResults = new Set<any>();
+      const allResults = new Set<SgNode>();
       for (const subRule of rule.any) {
         const nodes = this.applyRule(root, subRule);
         nodes.forEach(n => allResults.add(n));
@@ -378,26 +391,30 @@ export class ASTSearchService {
       // NOT: Find all nodes, exclude those matching not rule
       const allNodes = root.findAll('$_'); // Match everything
       const excludeNodes = new Set(this.applyRule(root, rule.not));
-      return allNodes.filter((n: any) => !excludeNodes.has(n));
+      return allNodes.filter((n) => !excludeNodes.has(n));
     }
 
     // Handle atomic rules
     if (rule.pattern) {
-      const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector || rule.pattern.context || '';
+      const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector ?? rule.pattern.context ?? '';
       let nodes = root.findAll(pattern);
 
       // Apply relational filters
       if (rule.inside) {
-        nodes = nodes.filter((n: any) => this.checkInside(n, rule.inside!));
+        const inside = rule.inside;
+        nodes = nodes.filter((n) => this.checkInside(n, inside));
       }
       if (rule.has) {
-        nodes = nodes.filter((n: any) => this.checkHas(n, rule.has!));
+        const has = rule.has;
+        nodes = nodes.filter((n) => this.checkHas(n, has));
       }
       if (rule.precedes) {
-        nodes = nodes.filter((n: any) => this.checkPrecedes(n, rule.precedes!));
+        const precedes = rule.precedes;
+        nodes = nodes.filter((n) => this.checkPrecedes(n, precedes));
       }
       if (rule.follows) {
-        nodes = nodes.filter((n: any) => this.checkFollows(n, rule.follows!));
+        const follows = rule.follows;
+        nodes = nodes.filter((n) => this.checkFollows(n, follows));
       }
 
       return nodes;
@@ -406,14 +423,16 @@ export class ASTSearchService {
     if (rule.kind) {
       // Find by node kind
       let nodes = root.findAll('$_'); // Find all nodes
-      nodes = nodes.filter((n: any) => n.kind() === rule.kind);
+      nodes = nodes.filter((n) => n.kind() === rule.kind);
 
       // Apply relational filters
       if (rule.inside) {
-        nodes = nodes.filter((n: any) => this.checkInside(n, rule.inside!));
+        const inside = rule.inside;
+        nodes = nodes.filter((n) => this.checkInside(n, inside));
       }
       if (rule.has) {
-        nodes = nodes.filter((n: any) => this.checkHas(n, rule.has!));
+        const has = rule.has;
+        nodes = nodes.filter((n) => this.checkHas(n, has));
       }
 
       return nodes;
@@ -423,14 +442,16 @@ export class ASTSearchService {
       // Find by regex
       const regex = new RegExp(rule.regex);
       let nodes = root.findAll('$_');
-      nodes = nodes.filter((n: any) => regex.test(n.text()));
+      nodes = nodes.filter((n) => regex.test(n.text()));
 
       // Apply relational filters
       if (rule.inside) {
-        nodes = nodes.filter((n: any) => this.checkInside(n, rule.inside!));
+        const inside = rule.inside;
+        nodes = nodes.filter((n) => this.checkInside(n, inside));
       }
       if (rule.has) {
-        nodes = nodes.filter((n: any) => this.checkHas(n, rule.has!));
+        const has = rule.has;
+        nodes = nodes.filter((n) => this.checkHas(n, has));
       }
 
       return nodes;
@@ -441,16 +462,20 @@ export class ASTSearchService {
       let nodes = root.findAll('$_');
 
       if (rule.inside) {
-        nodes = nodes.filter((n: any) => this.checkInside(n, rule.inside!));
+        const inside = rule.inside;
+        nodes = nodes.filter((n) => this.checkInside(n, inside));
       }
       if (rule.has) {
-        nodes = nodes.filter((n: any) => this.checkHas(n, rule.has!));
+        const has = rule.has;
+        nodes = nodes.filter((n) => this.checkHas(n, has));
       }
       if (rule.precedes) {
-        nodes = nodes.filter((n: any) => this.checkPrecedes(n, rule.precedes!));
+        const precedes = rule.precedes;
+        nodes = nodes.filter((n) => this.checkPrecedes(n, precedes));
       }
       if (rule.follows) {
-        nodes = nodes.filter((n: any) => this.checkFollows(n, rule.follows!));
+        const follows = rule.follows;
+        nodes = nodes.filter((n) => this.checkFollows(n, follows));
       }
 
       return nodes;
@@ -462,9 +487,9 @@ export class ASTSearchService {
   /**
    * Check if node matches a rule
    */
-  private nodeMatchesRule(node: any, rule: ASTRule): boolean {
+  private nodeMatchesRule(node: SgNode, rule: ASTRule): boolean {
     if (rule.pattern) {
-      const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector || '';
+      const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector ?? '';
       if (!node.matches(pattern)) return false;
     }
 
@@ -513,8 +538,8 @@ export class ASTSearchService {
   /**
    * Check inside relational rule
    */
-  private checkInside(node: any, rule: ASTRule | any): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern || '';
+  private checkInside(node: SgNode, rule: ASTRule | string): boolean {
+    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
     if (!pattern) return true;
 
     return node.inside(pattern);
@@ -523,8 +548,8 @@ export class ASTSearchService {
   /**
    * Check has relational rule
    */
-  private checkHas(node: any, rule: ASTRule | any): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern || '';
+  private checkHas(node: SgNode, rule: ASTRule | string): boolean {
+    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
     if (!pattern) return true;
 
     return node.has(pattern);
@@ -533,8 +558,8 @@ export class ASTSearchService {
   /**
    * Check precedes relational rule
    */
-  private checkPrecedes(node: any, rule: ASTRule | any): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern || '';
+  private checkPrecedes(node: SgNode, rule: ASTRule | string): boolean {
+    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
     if (!pattern) return true;
 
     return node.precedes(pattern);
@@ -543,8 +568,8 @@ export class ASTSearchService {
   /**
    * Check follows relational rule
    */
-  private checkFollows(node: any, rule: ASTRule | any): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern || '';
+  private checkFollows(node: SgNode, rule: ASTRule | string): boolean {
+    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
     if (!pattern) return true;
 
     return node.follows(pattern);
@@ -553,7 +578,7 @@ export class ASTSearchService {
   /**
    * Extract metavariables from a matched node
    */
-  private extractMetavariables(node: any, pattern: string): Record<string, any> | undefined {
+  private extractMetavariables(node: SgNode, pattern: string): Record<string, { text: string; line: number; column: number }> | undefined {
     // Extract variable names from pattern ($VAR, $$VAR, $$$VAR)
     const varPattern = /\$(\$?\$?[A-Z_][A-Z0-9_]*)/g;
     const vars = new Set<string>();
@@ -566,7 +591,7 @@ export class ASTSearchService {
 
     if (vars.size === 0) return undefined;
 
-    const metaVars: Record<string, any> = {};
+    const metaVars: Record<string, { text: string; line: number; column: number }> = {};
 
     for (const varName of vars) {
       try {
@@ -590,9 +615,9 @@ export class ASTSearchService {
   /**
    * Extract metavariables from rule
    */
-  private extractMetavariablesFromRule(node: any, rule: ASTRule): Record<string, any> | undefined {
+  private extractMetavariablesFromRule(node: SgNode, rule: ASTRule): Record<string, { text: string; line: number; column: number }> | undefined {
     if (rule.pattern) {
-      const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector || '';
+      const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector ?? '';
       return this.extractMetavariables(node, pattern);
     }
     return undefined;
@@ -662,14 +687,22 @@ export class ASTSearchService {
 
     // Validate relational rules with stopBy
     if (rule.inside && typeof rule.inside === 'object') {
-      if ('stopBy' in rule.inside && rule.inside.stopBy && rule.inside.stopBy !== 'neighbor' && rule.inside.stopBy !== 'end') {
-        errors.push('inside.stopBy must be either "neighbor" or "end"');
+      if ('stopBy' in rule.inside) {
+        const stopBy = rule.inside.stopBy;
+        const validValues = ['neighbor', 'end'];
+        if (stopBy && !validValues.includes(stopBy)) {
+          errors.push('inside.stopBy must be either "neighbor" or "end"');
+        }
       }
     }
 
     if (rule.has && typeof rule.has === 'object') {
-      if ('stopBy' in rule.has && rule.has.stopBy && rule.has.stopBy !== 'neighbor' && rule.has.stopBy !== 'end') {
-        errors.push('has.stopBy must be either "neighbor" or "end"');
+      if ('stopBy' in rule.has) {
+        const stopBy = rule.has.stopBy;
+        const validValues = ['neighbor', 'end'];
+        if (stopBy && !validValues.includes(stopBy)) {
+          errors.push('has.stopBy must be either "neighbor" or "end"');
+        }
       }
     }
 

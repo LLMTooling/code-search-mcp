@@ -211,7 +211,7 @@ function pathIsAbsolute(p: string): boolean {
   }
 
   // Windows absolute paths: C:\ or \\ or \\?\ or \\.\
-  if (/^[a-zA-Z]:\\/.test(p) || /^\\\\/.test(p)) {
+  if (/^[a-zA-Z]:\\/.test(p) || p.startsWith("\\\\")) {
     return true;
   }
 
