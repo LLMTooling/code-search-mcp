@@ -209,9 +209,11 @@ describe('Security Utilities', () => {
       expect(isWindowsUncExtendedPath('\\\\server\\share')).toBe(false);
     });
 
-    it('should return false on non-Windows platforms', () => {
+    it('should detect UNC paths on all platforms (defense-in-depth)', () => {
       Object.defineProperty(process, 'platform', { value: 'linux' });
-      expect(isWindowsUncExtendedPath('\\\\?\\C:\\Windows')).toBe(false);
+      // UNC extended paths should be detected regardless of platform
+      expect(isWindowsUncExtendedPath('\\\\?\\C:\\Windows')).toBe(true);
+      // Regular Unix paths should not match
       expect(isWindowsUncExtendedPath('/usr/bin')).toBe(false);
     });
   });

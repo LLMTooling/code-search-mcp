@@ -227,11 +227,10 @@ function pathIsAbsolute(p: string): boolean {
  * @returns true if the path uses UNC extended-length syntax
  */
 export function isWindowsUncExtendedPath(p: string): boolean {
-  if (process.platform !== 'win32') {
-    return false;
-  }
+  // Check for Windows UNC extended-length paths on all platforms
+  // This is defense-in-depth - reject dangerous path patterns regardless of server OS
   // Match \\?\ or \\.\ prefixes (extended-length path prefixes)
-  // Character class [?.] matches literal ? or . characters
+  // In regex: \\\\ matches \\, [?.] matches ? or ., \\ matches \
   return /^\\\\[?.]\\/.test(p);
 }
 
