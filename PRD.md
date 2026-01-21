@@ -75,6 +75,7 @@ The migration is complete when:
 ## Notes
 - When implementing, work on ONE task at a time
 - Commit after each completed task
+- **DO NOT add "Co-Authored-By" lines to commit messages**
 - If tests fail, fix before proceeding
 - If typecheck fails, fix before proceeding
 - If Biome reports issues, fix before marking task complete
