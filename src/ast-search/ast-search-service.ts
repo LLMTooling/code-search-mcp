@@ -39,23 +39,14 @@ import type {
 // Type for ast-grep language (built-in or custom string)
 type NapiLang = Lang | string;
 
-// Interface for a dynamic language package (has libraryPath property required by ast-grep)
-interface DynamicLanguagePackage {
-  libraryPath: string;
-  extensions: readonly string[];
-  languageSymbol: string;
-  expandoChar: string;
-}
-
-// Type for dynamic language configuration expected by registerDynamicLanguage
-type DynamicLanguageConfig = Record<string, DynamicLanguagePackage>;
-
 // Register dynamic languages once
 let languagesRegistered = false;
 
 function ensureLanguagesRegistered() {
   if (!languagesRegistered) {
-    const config = {
+    // The @ast-grep/lang-* packages export types with readonly arrays, but registerDynamicLanguage
+    // expects mutable arrays. We need to cast here due to this external library type mismatch.
+    const langConfig = {
       bash: langBash,
       c: langC,
       cpp: langCpp,
@@ -71,8 +62,8 @@ function ensureLanguagesRegistered() {
       tsx: langTsx,
       typescript: langTypeScript,
       yaml: langYaml,
-    };
-    registerDynamicLanguage(config as DynamicLanguageConfig);
+    } as unknown as Parameters<typeof registerDynamicLanguage>[0];
+    registerDynamicLanguage(langConfig);
     languagesRegistered = true;
   }
 }
@@ -397,7 +388,7 @@ export class ASTSearchService {
     // Handle atomic rules
     if (rule.pattern) {
       const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector ?? rule.pattern.context ?? '';
-      let nodes = root.findAll(pattern);
+      let nodes = root.findAll(pattern || '');
 
       // Apply relational filters
       if (rule.inside) {
@@ -490,7 +481,7 @@ export class ASTSearchService {
   private nodeMatchesRule(node: SgNode, rule: ASTRule): boolean {
     if (rule.pattern) {
       const pattern = typeof rule.pattern === 'string' ? rule.pattern : rule.pattern.selector ?? '';
-      if (!node.matches(pattern)) return false;
+      if (!node.matches(pattern || '')) return false;
     }
 
     if (rule.kind && node.kind() !== rule.kind) {
@@ -539,7 +530,7 @@ export class ASTSearchService {
    * Check inside relational rule
    */
   private checkInside(node: SgNode, rule: ASTRule | string): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
+    const pattern = typeof rule === 'string' ? rule : typeof rule.pattern === 'string' ? rule.pattern : rule.pattern?.selector ?? '';
     if (!pattern) return true;
 
     return node.inside(pattern);
@@ -549,7 +540,7 @@ export class ASTSearchService {
    * Check has relational rule
    */
   private checkHas(node: SgNode, rule: ASTRule | string): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
+    const pattern = typeof rule === 'string' ? rule : typeof rule.pattern === 'string' ? rule.pattern : rule.pattern?.selector ?? '';
     if (!pattern) return true;
 
     return node.has(pattern);
@@ -559,7 +550,7 @@ export class ASTSearchService {
    * Check precedes relational rule
    */
   private checkPrecedes(node: SgNode, rule: ASTRule | string): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
+    const pattern = typeof rule === 'string' ? rule : typeof rule.pattern === 'string' ? rule.pattern : rule.pattern?.selector ?? '';
     if (!pattern) return true;
 
     return node.precedes(pattern);
@@ -569,7 +560,7 @@ export class ASTSearchService {
    * Check follows relational rule
    */
   private checkFollows(node: SgNode, rule: ASTRule | string): boolean {
-    const pattern = typeof rule === 'string' ? rule : rule.pattern ?? '';
+    const pattern = typeof rule === 'string' ? rule : typeof rule.pattern === 'string' ? rule.pattern : rule.pattern?.selector ?? '';
     if (!pattern) return true;
 
     return node.follows(pattern);
