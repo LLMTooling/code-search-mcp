@@ -5,7 +5,7 @@
 import { createHash } from 'crypto';
 import path from 'path';
 import { promises as fs } from 'fs';
-import { isWindowsUncExtendedPath, sanitizeErrorMessage } from './security.js';
+import { isWindowsUncExtendedPath } from './security.js';
 
 /**
  * Generate a deterministic workspace ID from an absolute path.

@@ -8,7 +8,6 @@ import path from 'path';
 import os from 'os';
 import type { SymbolIndex, SymbolResult, SupportedLanguage } from '../types/index.js';
 import { createHash } from 'crypto';
-import { CACHE_DIR_PERMISSIONS, CACHE_FILE_PERMISSIONS } from '../utils/security.js';
 
 const CACHE_VERSION = '1.0.0';
 const CACHE_DIR_NAME = '.code-search-mcp-cache';
@@ -56,7 +55,7 @@ export class CacheManager {
   }
 
   /**
-   * Initialize the cache directory with secure permissions.
+   * Initialize the cache directory.
    */
   async initialize(): Promise<void> {
     if (!this.enableCache) {
@@ -64,10 +63,7 @@ export class CacheManager {
     }
 
     try {
-      await fs.mkdir(this.cacheDir, {
-        recursive: true,
-        mode: CACHE_DIR_PERMISSIONS,
-      });
+      await fs.mkdir(this.cacheDir, { recursive: true });
     } catch {
       this.enableCache = false;
     }
@@ -285,11 +281,7 @@ export class CacheManager {
       };
 
       const cacheFilePath = this.getCacheFilePath(workspaceId);
-      await fs.writeFile(
-        cacheFilePath,
-        JSON.stringify(cached, null, 2),
-        { mode: CACHE_FILE_PERMISSIONS }
-      );
+      await fs.writeFile(cacheFilePath, JSON.stringify(cached, null, 2), 'utf-8');
     } catch {
       // Don't throw - caching is optional
     }

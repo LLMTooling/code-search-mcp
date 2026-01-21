@@ -14,18 +14,14 @@ import {
   MAX_AST_FILE_SIZE,
   DEFAULT_MAX_RESULTS,
   PROCESS_TIMEOUT,
-  CACHE_FILE_PERMISSIONS,
-  CACHE_DIR_PERMISSIONS,
 } from '../../src/utils/security.js';
 
 describe('Security Utilities', () => {
   describe('Constants', () => {
     it('should have defined constants for security limits', () => {
-      expect(MAX_AST_FILE_SIZE).toBe(10 * 1024 * 1024);
+      expect(MAX_AST_FILE_SIZE).toBe(100 * 1024 * 1024);
       expect(DEFAULT_MAX_RESULTS).toBe(10000);
       expect(PROCESS_TIMEOUT).toBe(30000);
-      expect(CACHE_FILE_PERMISSIONS).toBe(0o600);
-      expect(CACHE_DIR_PERMISSIONS).toBe(0o700);
     });
   });
 
@@ -148,8 +144,8 @@ describe('Security Utilities', () => {
     });
 
     it('should provide helpful error message with MB conversion', () => {
-      const largeSize = 15 * 1024 * 1024; // 15MB
-      expect(() => validateFileSize(largeSize)).toThrow(/15MB.*10MB/);
+      const largeSize = 150 * 1024 * 1024; // 150MB
+      expect(() => validateFileSize(largeSize)).toThrow(/150MB.*100MB/);
     });
   });
 

@@ -23,7 +23,6 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import fastGlob from 'fast-glob';
 import {
-  safeRegex,
   MAX_AST_FILE_SIZE,
   MAX_AST_RECURSION_DEPTH,
 } from '../utils/security.js';
@@ -171,14 +170,6 @@ export class ASTSearchService {
       );
     }
     return fs.readFile(filePath, 'utf-8');
-  }
-
-  /**
-   * Validate regex pattern for security (prevent ReDoS).
-   * Returns null if pattern is unsafe.
-   */
-  private validatePattern(pattern: string): RegExp | null {
-    return safeRegex(pattern);
   }
 
   /**

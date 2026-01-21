@@ -4,9 +4,9 @@
  */
 
 /**
- * Maximum file size for AST parsing (10MB)
+ * Maximum file size for AST parsing (100MB)
  */
-export const MAX_AST_FILE_SIZE = 10 * 1024 * 1024;
+export const MAX_AST_FILE_SIZE = 100 * 1024 * 1024;
 
 /**
  * Maximum regex pattern length
@@ -26,17 +26,7 @@ export const DEFAULT_MAX_RESULTS = 10000;
 /**
  * Timeout for external processes (milliseconds)
  */
-export const PROCESS_TIMEOUT = 30000; // 30 seconds
-
-/**
- * Cache file permissions (owner read/write only)
- */
-export const CACHE_FILE_PERMISSIONS = 0o600;
-
-/**
- * Cache directory permissions (owner read/write/execute only)
- */
-export const CACHE_DIR_PERMISSIONS = 0o700;
+export const PROCESS_TIMEOUT = 30000; // 30 seconds;
 
 /**
  * Validate that a regex pattern is safe from ReDoS attacks.
