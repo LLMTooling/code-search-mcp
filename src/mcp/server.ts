@@ -33,6 +33,8 @@ export interface CodeSearchMCPServerOptions {
 }
 
 export class CodeSearchMCPServer {
+  // Note: Using Server (low-level API) intentionally for precise control over tool registration
+  // eslint-disable-next-line @typescript-eslint/no-deprecated
   private server: Server;
   private allowedWorkspaces: string[];
   private stackRegistry: StackRegistry | null = null;
@@ -45,6 +47,7 @@ export class CodeSearchMCPServer {
   private astSearchService: ASTSearchService;
 
   constructor(options: CodeSearchMCPServerOptions = {}) {
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
     this.server = new Server(
       {
         name: 'code-search-mcp',
@@ -83,7 +86,7 @@ export class CodeSearchMCPServer {
 
   private setupHandlers(): void {
     // List available tools
-    this.server.setRequestHandler(ListToolsRequestSchema, async () => {
+    this.server.setRequestHandler(ListToolsRequestSchema, () => {
       const tools: Tool[] = [
         {
           name: 'detect_stacks',
@@ -419,7 +422,7 @@ export class CodeSearchMCPServer {
           case 'search_ast_rule':
             return await this.handleSearchASTRule(toolArgs);
           case 'check_ast_grep':
-            return await this.handleCheckASTGrep();
+            return this.handleCheckASTGrep();
           default:
             throw new Error(`Unknown tool: ${name}`);
         }
@@ -440,7 +443,7 @@ export class CodeSearchMCPServer {
     await this.ensureStackRegistry();
 
     const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
-    const scanMode = (args.scan_mode as 'fast' | 'thorough') ?? 'thorough';
+    const scanMode = (args.scan_mode as 'fast' | 'thorough' | undefined) ?? 'thorough';
 
     if (!this.detectionEngine) {
       throw new Error('Stack detection engine not initialized');
@@ -475,7 +478,7 @@ export class CodeSearchMCPServer {
       await this.symbolSearchService.refreshIndex(workspaceId, workspacePath);
     }
 
-    const result = await this.symbolSearchService.searchSymbols(workspaceId, {
+    const result = this.symbolSearchService.searchSymbols(workspaceId, {
       language: args.language as never,
       name: args.name as string,
       match: args.match as never,
@@ -597,7 +600,7 @@ export class CodeSearchMCPServer {
 
   private async handleRefreshIndex(args: Record<string, unknown>) {
     const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
-    const forceRebuild = (args.force_rebuild as boolean) ?? false;
+    const forceRebuild = (args.force_rebuild as boolean | undefined) ?? false;
 
     // Check if ctags is available
     if (!(await isCTagsAvailable())) {
@@ -780,7 +783,7 @@ export class CodeSearchMCPServer {
     const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
 
     // Check if ast-grep is available (should always be true since it's bundled)
-    const astGrepInfo = await this.astSearchService.isAvailable();
+    const astGrepInfo = this.astSearchService.isAvailable();
     if (!astGrepInfo.available) {
       throw new Error(`ast-grep failed to load: ${astGrepInfo.error ?? 'unknown error'}`);
     }
@@ -807,7 +810,7 @@ export class CodeSearchMCPServer {
     const { path: workspacePath, workspaceId } = await this.resolveWorkspace(args.path as string);
 
     // Check if ast-grep is available (should always be true since it's bundled)
-    const astGrepInfo = await this.astSearchService.isAvailable();
+    const astGrepInfo = this.astSearchService.isAvailable();
     if (!astGrepInfo.available) {
       throw new Error(`ast-grep failed to load: ${astGrepInfo.error ?? 'unknown error'}`);
     }
@@ -839,8 +842,8 @@ export class CodeSearchMCPServer {
     };
   }
 
-  private async handleCheckASTGrep() {
-    const astGrepInfo = await this.astSearchService.isAvailable();
+  private handleCheckASTGrep() {
+    const astGrepInfo = this.astSearchService.isAvailable();
 
     return {
       content: [

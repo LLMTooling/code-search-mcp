@@ -207,7 +207,7 @@ export class CacheManager {
 
       // Read and parse cache
       const cacheContent = await fs.readFile(cacheFilePath, 'utf-8');
-      const cached: CachedIndex = JSON.parse(cacheContent);
+      const cached = JSON.parse(cacheContent) as CachedIndex;
 
       // Validate cache version
       if (cached.metadata.version !== CACHE_VERSION) {
@@ -233,12 +233,11 @@ export class CacheManager {
 
       // Check for modified files
       for (const [file, cachedMtime] of Object.entries(cachedMtimes)) {
-        const currentMtime = currentMtimes[file];
-        if (currentMtime === undefined) {
+        if (!Object.hasOwn(currentMtimes, file)) {
           // File was deleted
           return false;
         }
-        if (currentMtime !== cachedMtime) {
+        if (currentMtimes[file] !== cachedMtime) {
           return false;
         }
       }
@@ -305,7 +304,7 @@ export class CacheManager {
 
       const cacheFilePath = this.getCacheFilePath(workspaceId);
       const cacheContent = await fs.readFile(cacheFilePath, 'utf-8');
-      const cached: CachedIndex = JSON.parse(cacheContent);
+      const cached = JSON.parse(cacheContent) as CachedIndex;
 
       const index = this.deserializeIndex(cached.index);
 
@@ -363,11 +362,9 @@ export class CacheManager {
       const cacheFilePath = this.getCacheFilePath(workspaceId);
 
       // Check if cache exists
-      let cacheExists = false;
       let cacheSize = 0;
       try {
         const stats = await fs.stat(cacheFilePath);
-        cacheExists = true;
         cacheSize = stats.size;
       } catch {
         return {
@@ -382,13 +379,11 @@ export class CacheManager {
         };
       }
 
-      if (!cacheExists) {
-        return null;
-      }
+      // Cache exists - read and return stats
 
       // Read cache
       const cacheContent = await fs.readFile(cacheFilePath, 'utf-8');
-      const cached: CachedIndex = JSON.parse(cacheContent);
+      const cached = JSON.parse(cacheContent) as CachedIndex;
 
       const lastIndexed = new Date(cached.metadata.lastIndexed);
       const cacheAge = Date.now() - lastIndexed.getTime();
@@ -425,7 +420,7 @@ export class CacheManager {
         if (file.endsWith('.json')) {
           const cacheFilePath = path.join(this.cacheDir, file);
           const cacheContent = await fs.readFile(cacheFilePath, 'utf-8');
-          const cached: CachedIndex = JSON.parse(cacheContent);
+          const cached = JSON.parse(cacheContent) as CachedIndex;
 
           const fileStats = await fs.stat(cacheFilePath);
           const lastIndexed = new Date(cached.metadata.lastIndexed);

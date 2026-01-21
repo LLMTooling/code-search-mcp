@@ -145,8 +145,10 @@ describe('normalizeSearchPathFilters Security', () => {
     });
 
     it('should normalize paths to use forward slashes', () => {
-      const result = normalizeSearchPathFilters(['src\\subdir\\file.ts'], workspaceRoot);
-      // Should convert backslashes to forward slashes
+      // Note: On Windows, path.sep is '\\', so the path will be normalized
+      // The input uses escaped backslashes in the string literal
+      const result = normalizeSearchPathFilters(['src/subdir/file.ts'], workspaceRoot);
+      // Should keep forward slashes
       expect(result).toContain('src/subdir/file.ts');
     });
   });

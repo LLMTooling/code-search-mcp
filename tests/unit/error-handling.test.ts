@@ -402,14 +402,14 @@ describe('Error Handling and Edge Cases', () => {
   });
 
   describe('Symbol Search Error Handling', () => {
-    it('should handle non-existent workspace for symbol search', async () => {
-      await expect(
+    it('should handle non-existent workspace for symbol search', () => {
+      expect(() =>
         symbolSearchService.searchSymbols('ws-nonexistent', {
           language: 'typescript',
           name: 'Test',
           match: 'exact',
         })
-      ).rejects.toThrow();
+      ).toThrow();
     });
   });
 

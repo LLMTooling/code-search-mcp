@@ -70,22 +70,25 @@ export class SymbolIndexer {
       };
 
       // Get or create language map
-      if (!index.byLanguage.has(language)) {
-        index.byLanguage.set(language, new Map());
+      let languageMap = index.byLanguage.get(language);
+      if (!languageMap) {
+        languageMap = new Map();
+        index.byLanguage.set(language, languageMap);
       }
-      const languageMap = index.byLanguage.get(language)!;
 
       // Get or create kind map
-      if (!languageMap.has(normalizedKind)) {
-        languageMap.set(normalizedKind, new Map());
+      let kindMap = languageMap.get(normalizedKind);
+      if (!kindMap) {
+        kindMap = new Map();
+        languageMap.set(normalizedKind, kindMap);
       }
-      const kindMap = languageMap.get(normalizedKind)!;
 
       // Get or create name array
-      if (!kindMap.has(tag.name)) {
-        kindMap.set(tag.name, []);
+      let nameArray = kindMap.get(tag.name);
+      if (!nameArray) {
+        nameArray = [];
+        kindMap.set(tag.name, nameArray);
       }
-      const nameArray = kindMap.get(tag.name)!;
 
       nameArray.push(symbol);
       index.totalSymbols++;

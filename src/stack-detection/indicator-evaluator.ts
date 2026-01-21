@@ -33,7 +33,7 @@ export class IndicatorEvaluator {
   constructor(
     private workspaceRoot: string,
     private maxBytesPerFile: number = 1024 * 1024 // 1MB default
-  ) {}
+  ) { }
 
   async evaluate(indicator: Indicator): Promise<IndicatorEvidence[]> {
     switch (indicator.kind) {
@@ -127,7 +127,7 @@ export class IndicatorEvaluator {
         kind: 'filePatternExists',
         glob: indicator.glob,
         weight: indicator.weight,
-        note: `Found ${matches.length} file(s) matching pattern: ${indicator.glob}`,
+        note: `Found ${String(matches.length)} file(s) matching pattern: ${indicator.glob}`,
       },
     ];
   }
@@ -178,7 +178,7 @@ export class IndicatorEvaluator {
         kind: 'pathPattern',
         regex: indicator.regex,
         weight: indicator.weight,
-        note: `Found ${matches.length} path(s) matching regex: ${indicator.regex}`,
+        note: `Found ${String(matches.length)} path(s) matching regex: ${indicator.regex}`,
       },
     ];
   }

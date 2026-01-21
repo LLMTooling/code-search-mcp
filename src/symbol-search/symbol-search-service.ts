@@ -13,15 +13,15 @@ import { getDefaultKinds } from './language-profiles.js';
 import { safeRegex } from '../utils/security.js';
 
 export class SymbolSearchService {
-  constructor(private indexer: SymbolIndexer) {}
+  constructor(private indexer: SymbolIndexer) { }
 
   /**
    * Search for symbols based on the provided parameters.
    */
-  async searchSymbols(
+  searchSymbols(
     workspaceId: string,
     params: SymbolSearchParams
-  ): Promise<SymbolSearchResult> {
+  ): SymbolSearchResult {
     const index = this.indexer.getIndex(workspaceId);
     if (!index) {
       throw new Error(`No symbol index found for workspace: ${workspaceId}`);

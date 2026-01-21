@@ -23,7 +23,7 @@ interface StackEvaluation {
 }
 
 export class StackDetectionEngine {
-  constructor(private registry: StackRegistry) {}
+  constructor(private registry: StackRegistry) { }
 
   async detectStacks(
     workspaceId: string,
@@ -90,7 +90,7 @@ export class StackDetectionEngine {
     const detectedIds = new Set(detectedStacks.map((s) => s.id));
     for (const stack of detectedStacks) {
       const def = this.registry.stacks[stack.id];
-      if (def?.dependsOn) {
+      if (def.dependsOn) {
         stack.resolvedDependencies = def.dependsOn.filter((depId) =>
           detectedIds.has(depId)
         );
@@ -229,9 +229,7 @@ export class StackDetectionEngine {
 
     // Group by category
     for (const stack of detectedStacks) {
-      if (!byCategory[stack.category]) {
-        byCategory[stack.category] = [];
-      }
+      byCategory[stack.category] ??= [];
       byCategory[stack.category]?.push(stack);
     }
 
@@ -250,8 +248,8 @@ export class StackDetectionEngine {
       const sorted = stacks.sort((a, b) => {
         const aDef = this.registry.stacks[a.id];
         const bDef = this.registry.stacks[b.id];
-        const aPriority = aDef?.detection.priority ?? 0;
-        const bPriority = bDef?.detection.priority ?? 0;
+        const aPriority = aDef.detection.priority ?? 0;
+        const bPriority = bDef.detection.priority ?? 0;
 
         // Higher priority first
         if (aPriority !== bPriority) {

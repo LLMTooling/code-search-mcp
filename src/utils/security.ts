@@ -45,33 +45,33 @@ export function validateRegexPattern(pattern: string, maxLength = MAX_REGEX_LENG
 
   // Check pattern length
   if (pattern.length > maxLength) {
-    throw new Error(`Regex pattern exceeds maximum length of ${maxLength} characters`);
+    throw new Error(`Regex pattern exceeds maximum length of ${String(maxLength)} characters`);
   }
 
   // Check for nested quantifiers like (a+)+, (a*)*, etc.
   // Pattern: \( [chars with quantifiers] \) followed by quantifier
-  if (/\([^)]*[\*\+][^)]*\)[\*\+]/.test(pattern)) {
+  if (/\([^)]*[*+][^)]*\)[*+]/.test(pattern)) {
     throw new Error(
       'Regex pattern contains nested quantifiers that could cause catastrophic backtracking (ReDoS)'
     );
   }
 
   // Check for backreference with quantifier like \1+, \1*, \1{10}
-  if (/\\\d[\*\+{]/.test(pattern)) {
+  if (/\\\d[*+{]/.test(pattern)) {
     throw new Error(
       'Regex pattern contains backreferences with quantifiers that could cause catastrophic backtracking (ReDoS)'
     );
   }
 
   // Check for repeated capturing groups like (.+)+\1
-  if (/\(.+\)[\*\+].*\\\d/.test(pattern)) {
+  if (/\(.+\)[*+].*\\\d/.test(pattern)) {
     throw new Error(
       'Regex pattern contains repeated capturing groups that could cause catastrophic backtracking (ReDoS)'
     );
   }
 
   // Check for overlapping alternations like (a|a)+ or similar
-  const alternationCount = (pattern.match(/\|/g) || []).length;
+  const alternationCount = (pattern.match(/\|/g) ?? []).length;
   if (alternationCount > 20) {
     throw new Error('Regex pattern contains excessive alternation that could cause performance issues');
   }
@@ -82,7 +82,8 @@ export function validateRegexPattern(pattern: string, maxLength = MAX_REGEX_LENG
   let match;
   while ((match = quantifierPattern.exec(pattern)) !== null) {
     const min = parseInt(match[1], 10);
-    const max = match[3] !== undefined ? parseInt(match[3], 10) : min;
+    const maxStr = match[3];
+    const max = maxStr ? parseInt(maxStr, 10) : min;
 
     if (min > 100 || max > 100) {
       throw new Error(
@@ -139,7 +140,7 @@ export function validateLimit(
   }
 
   if (value < min || value > max) {
-    throw new Error(`Limit must be between ${min} and ${max}`);
+    throw new Error(`Limit must be between ${String(min)} and ${String(max)}`);
   }
 
   return Math.floor(value);
@@ -163,7 +164,7 @@ export function validateFileSize(size: number, maxSize = MAX_AST_FILE_SIZE): voi
 
   if (size > maxSize) {
     throw new Error(
-      `File size (${Math.round(size / 1024 / 1024)}MB) exceeds maximum allowed size of ${Math.round(maxSize / 1024 / 1024)}MB`
+      `File size (${String(Math.round(size / 1024 / 1024))}MB) exceeds maximum allowed size of ${String(Math.round(maxSize / 1024 / 1024))}MB`
     );
   }
 }
@@ -229,7 +230,9 @@ export function isWindowsUncExtendedPath(p: string): boolean {
   if (process.platform !== 'win32') {
     return false;
   }
-  return /^\\\\[?\\.]/.test(p);
+  // Match \\?\ or \\.\ prefixes (extended-length path prefixes)
+  // Character class [?.] matches literal ? or . characters
+  return /^\\\\[?.]\\/.test(p);
 }
 
 /**
@@ -249,7 +252,7 @@ export function sanitizeErrorMessage(message: string): string {
 
   // Remove absolute Unix paths (remaining paths that don't match home pattern)
   // Exclude paths that were already sanitized (/home/[USER]/, /Users/[USER]/)
-  sanitized = sanitized.replace(/\/(?!home\/\[USER\]|Users\/\[USER\])[^\/\s]+\/[^\/\s]+/g, '[PATH]');
+  sanitized = sanitized.replace(/\/(?!home\/\[USER\]|Users\/\[USER\])[^/\s]+\/[^/\s]+/g, '[PATH]');
 
   // Remove absolute Windows paths
   sanitized = sanitized.replace(/[A-Za-z]:\\[^\\]+\\[^\\]+/g, '[PATH]');
